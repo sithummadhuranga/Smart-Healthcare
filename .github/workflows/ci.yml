@@ -205,15 +205,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install kubeval
-        run: |
-          wget https://github.com/instrumenta/kubeval/releases/latest/download/kubeval-linux-amd64.tar.gz
-          tar xf kubeval-linux-amd64.tar.gz
-          sudo mv kubeval /usr/local/bin/
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "v1.28.0"
 
       - name: Validate all K8s manifests
-        run: |
-          find k8s -name "*.yaml" ! -name "secret.yaml.example" | xargs kubeval --kubernetes-version 1.28.0
+        run: bash ./scripts/validate-k8s.sh
 
   # ── Docker build (verify all Dockerfiles) ────────────────────────────────
   docker-build:

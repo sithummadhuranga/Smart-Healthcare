@@ -11,7 +11,6 @@ Full implementation tasks:
   - See FILE_1_PROJECT_KNOWLEDGE.md §6 for detailed requirements
 """
 
-import os
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
