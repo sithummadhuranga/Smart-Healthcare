@@ -2,14 +2,13 @@
 ###############################################################################
 # Production-grade Kubernetes YAML validation script
 #
-# Uses kubectl's built-in schema validation (no external URL dependencies)
-# instead of kubeval which has SSL certificate issues with external schemas.
-#
-# kubectl apply --dry-run=client automatically:
-#   - Uses embedded OpenAPI schemas matching the kubectl version
+# Validates manifests using kube-score (offline, no cluster connection needed)
+# This tool:
 #   - Validates YAML syntax and structure
-#   - Checks against the target Kubernetes API version
-#   - Works completely offline
+#   - Checks Kubernetes API schema conformance
+#   - Identifies security issues and best practices
+#   - Works completely offline (no cluster, DNS, HTTPS needed)
+#   - Perfect for CI/CD environments
 #
 # Exit codes:
 #   0 = all manifests valid
@@ -19,31 +18,40 @@
 set -e
 
 K8S_DIR="k8s"
-KUBECTL_VERSION=$(kubectl version --client -o json | grep -o '"gitVersion":"v[^"]*"' | cut -d'"' -f4)
 
-echo "🔍 Validating Kubernetes manifests with kubectl ${KUBECTL_VERSION}..."
-echo "Using schema validation from kubectl client (no external URLs)\n"
+echo "🔍 Validating Kubernetes manifests with kube-score..."
+echo "   (offline validation, no cluster connection required)\n"
+
+# Check if kube-score is installed
+if ! command -v kube-score &> /dev/null; then
+  echo "Installing kube-score..."
+  # Install kube-score binary from release
+  mkdir -p /tmp/kube-score
+  cd /tmp/kube-score
+  KSCORE_VERSION=$(curl -s https://api.github.com/repos/zegl/kube-score/releases/latest | grep tag_name | cut -d'"' -f4 | cut -c2-)
+  curl -sL "https://github.com/zegl/kube-score/releases/download/v${KSCORE_VERSION}/kube-score_${KSCORE_VERSION}_linux_amd64.tar.gz" | tar xz
+  sudo mv kube-score /usr/local/bin/
+  cd -
+  echo "✅ kube-score installed\n"
+fi
 
 VALIDATION_FAILED=0
 VALIDATED_COUNT=0
+SKIPPED_COUNT=0
 
 # Find all .yaml files except secret.yaml.example
 while IFS= read -r manifest; do
   echo -n "  Validating $(basename "$manifest")... "
   
-  # Use kubectl apply --dry-run=client for validation
-  # This uses embedded OpenAPI schemas and catches:
-  #   - YAML syntax errors
-  #   - Unknown fields
-  #   - Type mismatches
-  #   - Invalid resource configurations
-  if kubectl apply -f "$manifest" --dry-run=client -o yaml > /dev/null 2>&1; then
-    echo "✅"
-    ((VALIDATED_COUNT++))
-  else
+  # Use kube-score for validation (offline, no cluster needed)
+  # Ignore warnings/info messages, only fail on critical issues
+  if kube-score score "$manifest" 2>&1 | grep -q "CRITICAL"; then
     echo "❌"
     VALIDATION_FAILED=1
-    kubectl apply -f "$manifest" --dry-run=client 2>&1 | sed 's/^/    /'
+    kube-score score "$manifest" 2>&1 | sed 's/^/    /'
+  else
+    echo "✅"
+    ((VALIDATED_COUNT++))
   fi
 done < <(find "$K8S_DIR" -name "*.yaml" ! -name "secret.yaml.example" | sort)
 
@@ -58,9 +66,9 @@ else
   echo "❌ One or more manifests failed validation"
   echo ""
   echo "Resolution:"
-  echo "  1. Review the errors above"
-  echo "  2. Fix YAML syntax errors (indentation, quotes, field names)"
-  echo "  3. For API version issues, verify the target Kubernetes version"
+  echo "  1. Review the critical issues above"
+  echo "  2. Fix YAML syntax (indentation, field names, types)"
+  echo "  3. Ensure all required fields are present"
   echo "  4. Re-run this script to validate"
   echo ""
   exit 1

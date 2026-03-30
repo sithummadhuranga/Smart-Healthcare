@@ -20,7 +20,10 @@ load_dotenv()
 
 app = FastAPI(
     title="AI Symptom Checker",
-    description="AI-powered medical triage using Google Gemini. See /docs for OpenAPI spec.",
+    description=(
+        "AI-powered medical triage using Google Gemini. "
+        "See /docs for OpenAPI spec."
+    ),
     version="1.0.0",
 )
 
