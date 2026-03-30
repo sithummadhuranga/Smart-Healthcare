@@ -38,8 +38,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
-          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Validate lockfile
+        run: test -f "${{ matrix.service }}/package-lock.json"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.service)) }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.service }}-
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         working-directory: ${{ matrix.service }}

@@ -43,8 +43,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Validate lockfile
+        run: test -f "${{ matrix.service }}/package-lock.json"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.service)) }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.service }}-
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         working-directory: ${{ matrix.service }}
@@ -80,8 +90,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: ${{ matrix.service }}/package-lock.json
+
+      - name: Validate lockfile
+        run: test -f "${{ matrix.service }}/package-lock.json"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.service)) }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.service }}-
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         working-directory: ${{ matrix.service }}
@@ -136,8 +156,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
+
+      - name: Validate frontend lockfile
+        run: test -f "frontend/package-lock.json"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-frontend-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-frontend-
+            ${{ runner.os }}-npm-
 
       - name: Install dependencies
         working-directory: frontend
