@@ -1,0 +1,41 @@
+SE3020 — Distributed Systems | Group Assignment
+AI-Enabled Smart Healthcare Appointment & Telemedicine Platform
+
+TEAM MEMBERS
+============
+
+Member 1 — Infrastructure Lead + API Gateway + Auth Service + Patient Service
+  Name               : [REPLACE WITH FULL NAME]
+  Registration No.   : [REPLACE WITH REG NO, e.g. IT21000000]
+  Student ID         : [REPLACE WITH STUDENT ID]
+  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
+  Email              : [REPLACE WITH EMAIL]
+
+Member 2 — Doctor Service + Appointment Service + Admin APIs
+  Name               : [REPLACE WITH FULL NAME]
+  Registration No.   : [REPLACE WITH REG NO]
+  Student ID         : [REPLACE WITH STUDENT ID]
+  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
+  Email              : [REPLACE WITH EMAIL]
+
+Member 3 — Telemedicine Service + Payment Service + Notification Service
+  Name               : [REPLACE WITH FULL NAME]
+  Registration No.   : [REPLACE WITH REG NO]
+  Student ID         : [REPLACE WITH STUDENT ID]
+  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
+  Email              : [REPLACE WITH EMAIL]
+
+Member 4 — React Frontend + AI Symptom Checker Service
+  Name               : [REPLACE WITH FULL NAME]
+  Registration No.   : [REPLACE WITH REG NO]
+  Student ID         : [REPLACE WITH STUDENT ID]
+  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
+  Email              : [REPLACE WITH EMAIL]
+
+MODULE
+======
+  Module Code  : SE3020
+  Module Name  : Distributed Systems
+  Year / Sem   : Year 3 Semester 2
+  Institute    : SLIIT — Sri Lanka Institute of Information Technology
+  Academic Year: 2025 / 2026

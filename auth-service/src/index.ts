@@ -1,0 +1,25 @@
+import 'dotenv/config';
+import express, { Request, Response } from 'express';
+
+const app = express();
+const PORT = Number(process.env.AUTH_SERVICE_PORT) || 3001;
+const SERVICE_NAME = 'auth-service';
+
+app.use(express.json());
+
+// Health check
+app.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', service: SERVICE_NAME });
+});
+
+// STUB — Replace with full auth routes (Task M1-T5)
+app.use((_req: Request, res: Response) => {
+  res.status(501).json({
+    error: 'Not implemented yet — stub service',
+    hint: 'Implement auth routes (Task M1-T5)',
+  });
+});
+
+app.listen(PORT, () => {
+  console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);
+});

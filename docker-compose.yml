@@ -1,0 +1,300 @@
+version: '3.8'
+
+# ============================================================
+# AI-Enabled Smart Healthcare Platform — Docker Compose
+# Member 1 (Infrastructure Lead)
+# Run:  docker-compose up --build
+# Stop: docker-compose down -v  (removes volumes)
+# ============================================================
+
+services:
+
+  # ----------------------------------------------------------
+  # INFRASTRUCTURE — Databases & Message Queue
+  # ----------------------------------------------------------
+
+  mongodb:
+    image: mongo:7
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_DATABASE: authdb
+    volumes:
+      - mongo_data:/data/db
+      - ./db-scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    ports:
+      - "27017:27017"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: appointmentdb
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db-scripts/postgres-init.sql:/docker-entrypoint-initdb.d/postgres-init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - backend
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ----------------------------------------------------------
+  # MICROSERVICES
+  # ----------------------------------------------------------
+
+  api-gateway:
+    build:
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    env_file: ./.env
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    env_file: ./.env
+    ports:
+      - "3001:3001"
+    networks:
+      - backend
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  patient-service:
+    build:
+      context: ./patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    env_file: ./.env
+    ports:
+      - "3002:3002"
+    networks:
+      - backend
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3002/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  doctor-service:
+    build:
+      context: ./doctor-service
+      dockerfile: Dockerfile
+    container_name: doctor-service
+    env_file: ./.env
+    ports:
+      - "3003:3003"
+    networks:
+      - backend
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3003/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  appointment-service:
+    build:
+      context: ./appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    env_file: ./.env
+    ports:
+      - "3004:3004"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3004/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  telemedicine-service:
+    build:
+      context: ./telemedicine-service
+      dockerfile: Dockerfile
+    container_name: telemedicine-service
+    env_file: ./.env
+    ports:
+      - "3005:3005"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3005/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: Dockerfile
+    container_name: payment-service
+    env_file: ./.env
+    ports:
+      - "3006:3006"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3006/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: Dockerfile
+    container_name: notification-service
+    env_file: ./.env
+    ports:
+      - "3007:3007"
+    networks:
+      - backend
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+
+  ai-symptom-service:
+    build:
+      context: ./ai-symptom-service
+      dockerfile: Dockerfile
+    container_name: ai-symptom-service
+    env_file: ./.env
+    ports:
+      - "8000:8000"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/ai/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "80:80"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+# ============================================================
+# VOLUMES
+# ============================================================
+volumes:
+  mongo_data:
+    driver: local
+  postgres_data:
+    driver: local
+  rabbitmq_data:
+    driver: local
+
+# ============================================================
+# NETWORKS
+# ============================================================
+networks:
+  backend:
+    driver: bridge
