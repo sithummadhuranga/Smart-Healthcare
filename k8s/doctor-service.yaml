@@ -1,0 +1,79 @@
+# ============================================================
+# Doctor Service — Deployment + Service
+# Port: 3003  |  Depends on: MongoDB
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: doctor-service
+  namespace: default
+  labels:
+    app: doctor-service
+    version: "1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: doctor-service
+  template:
+    metadata:
+      labels:
+        app: doctor-service
+    spec:
+      initContainers:
+        - name: wait-for-mongodb
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z mongodb 27017; do
+                echo "Waiting for MongoDB..."; sleep 2;
+              done
+      containers:
+        - name: doctor-service
+          image: healthcare/doctor-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3003
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3003
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: doctor-service
+  namespace: default
+  labels:
+    app: doctor-service
+spec:
+  selector:
+    app: doctor-service
+  ports:
+    - port: 3003
+      targetPort: 3003
+  type: ClusterIP

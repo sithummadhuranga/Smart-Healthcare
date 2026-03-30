@@ -1,0 +1,88 @@
+# ============================================================
+# Appointment Service — Deployment + Service
+# Port: 3004  |  Depends on: PostgreSQL + RabbitMQ
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appointment-service
+  namespace: default
+  labels:
+    app: appointment-service
+    version: "1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appointment-service
+  template:
+    metadata:
+      labels:
+        app: appointment-service
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z postgres 5432; do
+                echo "Waiting for PostgreSQL..."; sleep 2;
+              done
+        - name: wait-for-rabbitmq
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z rabbitmq 5672; do
+                echo "Waiting for RabbitMQ..."; sleep 2;
+              done
+      containers:
+        - name: appointment-service
+          image: healthcare/appointment-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3004
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 25
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3004
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: appointment-service
+  namespace: default
+  labels:
+    app: appointment-service
+spec:
+  selector:
+    app: appointment-service
+  ports:
+    - port: 3004
+      targetPort: 3004
+  type: ClusterIP

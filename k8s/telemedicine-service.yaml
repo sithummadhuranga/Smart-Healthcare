@@ -1,0 +1,69 @@
+# ============================================================
+# Telemedicine Service — Deployment + Service
+# Port: 3005  |  Stateless (Agora tokens)
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: telemedicine-service
+  namespace: default
+  labels:
+    app: telemedicine-service
+    version: "1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: telemedicine-service
+  template:
+    metadata:
+      labels:
+        app: telemedicine-service
+    spec:
+      containers:
+        - name: telemedicine-service
+          image: healthcare/telemedicine-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3005
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3005
+            initialDelaySeconds: 15
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3005
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: telemedicine-service
+  namespace: default
+  labels:
+    app: telemedicine-service
+spec:
+  selector:
+    app: telemedicine-service
+  ports:
+    - port: 3005
+      targetPort: 3005
+  type: ClusterIP
