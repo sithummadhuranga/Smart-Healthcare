@@ -6,22 +6,22 @@ Member 3 (AI/Backend) will implement the Gemini integration.
 This stub passes health checks so docker-compose up succeeds on Day 1.
 
 Full implementation tasks:
-  - Connect to Google Gemini API (gemini-1.5-flash model)
-  - See api-contracts.md §4.8 for exact prompt structure
-  - See FILE_1_PROJECT_KNOWLEDGE.md §6 for detailed requirements
+    - Connect to Google Gemini API (gemini-1.5-flash model)
+    - See api-contracts.md §4.8 for exact prompt structure
+    - See FILE_1_PROJECT_KNOWLEDGE.md §6 for detailed requirements
 """
 
-import os
-from fastapi import FastAPI
-from pydantic import BaseModel
 from typing import List
 
 from dotenv import load_dotenv
+from fastapi import FastAPI
+from pydantic import BaseModel
+
 load_dotenv()
 
 app = FastAPI(
     title="AI Symptom Checker",
-    description="AI-powered medical triage using Google Gemini. See /docs for OpenAPI spec.",
+    description=("AI-powered medical triage using Google Gemini. " "See /docs for OpenAPI spec."),
     version="1.0.0",
 )
 

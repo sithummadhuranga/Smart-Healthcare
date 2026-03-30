@@ -1,0 +1,96 @@
+# ============================================================
+# Security Audit — checks npm packages for known vulnerabilities
+# Runs on PRs to main and weekly on main
+# ============================================================
+name: Security Audit
+
+on:
+  pull_request:
+    branches: [main]
+  schedule:
+    # Every Monday at 08:00 UTC
+    - cron: "0 8 * * 1"
+  workflow_dispatch:
+
+jobs:
+  # ── Validate all lockfiles (runs once, gates security audits) ──────────────
+  validate-dependencies:
+    name: Validate Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      
+      - name: Validate all lockfiles
+        run: node scripts/validate-lockfiles.js
+
+  audit-node-services:
+    name: npm audit (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: validate-dependencies
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - patient-service
+          - doctor-service
+          - appointment-service
+          - telemedicine-service
+          - payment-service
+          - notification-service
+          - frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ matrix.service }}-${{ hashFiles(format('{0}/package-lock.json', matrix.service)) }}
+          restore-keys: |
+            ${{ runner.os }}-npm-${{ matrix.service }}-
+            ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        working-directory: ${{ matrix.service }}
+        run: npm ci
+
+      - name: Run npm audit
+        working-directory: ${{ matrix.service }}
+        # Fail only on high/critical severity
+        run: npm audit --audit-level=high
+
+  audit-python:
+    name: pip safety audit (ai-symptom-service)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install safety
+        run: pip install safety
+
+      - name: Run safety check
+        working-directory: ai-symptom-service
+        run: safety check -r requirements.txt

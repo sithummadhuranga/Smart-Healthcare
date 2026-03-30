@@ -1,0 +1,79 @@
+# ============================================================
+# Notification Service — Deployment + Service
+# Port: 3007  |  Depends on: RabbitMQ
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  namespace: default
+  labels:
+    app: notification-service
+    version: "1.0"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      labels:
+        app: notification-service
+    spec:
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: busybox:1.35
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z rabbitmq 5672; do
+                echo "Waiting for RabbitMQ..."; sleep 2;
+              done
+      containers:
+        - name: notification-service
+          image: healthcare/notification-service:latest
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 3007
+          envFrom:
+            - configMapRef:
+                name: app-config
+            - secretRef:
+                name: app-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3007
+            initialDelaySeconds: 20
+            periodSeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3007
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
+            limits:
+              memory: "256Mi"
+              cpu: "300m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: default
+  labels:
+    app: notification-service
+spec:
+  selector:
+    app: notification-service
+  ports:
+    - port: 3007
+      targetPort: 3007
+  type: ClusterIP

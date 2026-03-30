@@ -1,17 +1,26 @@
-# Stage 1 — compile TypeScript
+# =============================================================
+# Telemedicine Service — Multi-stage Docker build
+# =============================================================
+
 FROM node:20-alpine AS builder
 WORKDIR /app
-COPY package.json tsconfig.json ./
-RUN npm install
+COPY package*.json tsconfig.json ./
+RUN npm ci
 COPY src/ ./src/
 RUN npm run build
 
-# Stage 2 — production image
 FROM node:20-alpine
 WORKDIR /app
-COPY package.json ./
-RUN npm install --omit=dev
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
 COPY --from=builder /app/dist ./dist
+
+USER appuser
+
 EXPOSE 3005
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD wget --quiet --tries=1 --spider http://localhost:3005/health || exit 1
