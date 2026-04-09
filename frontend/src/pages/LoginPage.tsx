@@ -37,186 +37,311 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex" style={{ background: '#fff' }}>
-      {/* Left panel — modern gradient hero */}
+    <div className="min-h-screen flex" style={{ background: 'var(--bg)' }}>
+      {/* Left panel — branding */}
       <div
-        className="hidden lg:flex flex-col w-[48%]"
+        className="hidden lg:flex flex-col justify-between w-[45%] p-12"
         style={{
+          background: 'linear-gradient(145deg, #0047AB 0%, #003380 50%, #001F5C 100%)',
           position: 'relative',
           overflow: 'hidden',
-          background: 'linear-gradient(160deg, #0D9488 0%, #14B8A6 40%, #2DD4BF 100%)',
-          padding: '40px 48px 0',
         }}
       >
-        {/* Decorative elements */}
-        <div style={{ position: 'absolute', top: -80, right: -80, width: 280, height: 280, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-        <div style={{ position: 'absolute', top: '30%', left: -60, width: 200, height: 200, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <div style={{ position: 'absolute', bottom: '20%', right: '10%', width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+        {/* Background circles */}
+        <div
+          style={{
+            position: 'absolute', width: 400, height: 400,
+            borderRadius: '50%', background: 'rgba(255,255,255,0.04)',
+            top: -100, right: -100,
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute', width: 300, height: 300,
+            borderRadius: '50%', background: 'rgba(255,255,255,0.04)',
+            bottom: 50, left: -80,
+          }}
+        />
 
-        {/* Brand */}
-        <div style={{ position: 'relative', zIndex: 2 }}>
-          <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, color: '#fff', letterSpacing: '-0.5px' }}>
-            Smart<span style={{ opacity: 0.8 }}>Care</span>
-          </span>
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div className="flex items-center gap-3 mb-4">
+            <div
+              style={{
+                width: 44, height: 44, borderRadius: 12,
+                background: 'rgba(255,255,255,0.15)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 24,
+              }}
+            >
+              🏥
+            </div>
+            <div>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 20, lineHeight: 1.2 }}>
+                SmartCare
+              </div>
+              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12 }}>Healthcare Platform</div>
+            </div>
+          </div>
         </div>
 
-        {/* Content */}
-        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 380 }}>
-          <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', display: 'inline-flex', padding: '6px 16px', borderRadius: 20, marginBottom: 24, width: 'fit-content' }}>
-            <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: '0.5px' }}>TRUSTED HEALTHCARE PLATFORM</span>
-          </div>
-          <h1 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: 38, fontWeight: 800, color: '#fff',
-            lineHeight: 1.15, marginBottom: 16, letterSpacing: '-0.5px',
-          }}>
-            Your Health,{'\n'}Our Priority
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h1 style={{ color: '#fff', fontSize: 38, fontWeight: 800, lineHeight: 1.2, marginBottom: 16 }}>
+            Modern Healthcare,<br />
+            <span style={{ color: '#7DD3FC' }}>Intelligent Care.</span>
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.7, marginBottom: 32, fontWeight: 400 }}>
-            Access world-class healthcare services, connect with expert doctors, and manage your wellness journey — all from one platform.
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 16, lineHeight: 1.6, marginBottom: 48 }}>
+            Connect with certified doctors, book appointments, and receive AI-powered health insights — all in one secure platform.
           </p>
-
-          {/* Stats row */}
-          <div style={{ display: 'flex', gap: 32 }}>
+          <div className="flex flex-col gap-4">
             {[
-              { value: '50K+', label: 'Active Users' },
-              { value: '200+', label: 'Doctors' },
-              { value: '4.9', label: 'Rating' },
-            ].map((s) => (
-              <div key={s.label}>
-                <div style={{ fontSize: 26, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>{s.value}</div>
-                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)', fontWeight: 500, marginTop: 2 }}>{s.label}</div>
+              { icon: '🤖', title: 'AI Symptom Analysis', desc: 'Powered by Google Gemini' },
+              { icon: '🎥', title: 'Video Consultations', desc: 'Secure telemedicine sessions' },
+              { icon: '📋', title: 'Digital Prescriptions', desc: 'Instant, secure, paperless' },
+            ].map((f) => (
+              <div key={f.title} className="flex items-center gap-3">
+                <div
+                  style={{
+                    width: 40, height: 40, borderRadius: 10,
+                    background: 'rgba(255,255,255,0.1)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 18, flexShrink: 0,
+                  }}
+                >
+                  {f.icon}
+                </div>
+                <div>
+                  <div style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{f.title}</div>
+                  <div style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{f.desc}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Hero image — properly layered behind text */}
-        <div style={{
-          position: 'absolute', right: 0, bottom: 0, width: '50%', height: '55%',
-          zIndex: 1, opacity: 0.15, pointerEvents: 'none',
-        }}>
-          <img
-            src="/hero-doctors.svg"
-            alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
-          />
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <div
+            style={{
+              background: 'rgba(255,255,255,0.08)',
+              borderRadius: 12,
+              padding: '16px 20px',
+              border: '1px solid rgba(255,255,255,0.12)',
+            }}
+          >
+            <div style={{ color: 'rgba(255,255,255,0.8)', fontSize: 13, fontStyle: 'italic', marginBottom: 8 }}>
+              "SmartCare has transformed how I manage my patients. The AI triage assistant is incredibly accurate."
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: 600 }}>
+              Dr. Sarah Chen, Cardiology
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Right panel — form */}
       <div className="flex-1 flex items-center justify-center p-8">
-        <div style={{ width: '100%', maxWidth: 400 }}>
+        <div style={{ width: '100%', maxWidth: 420 }}>
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div style={{ width: 28, height: 28, borderRadius: 8, background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff" opacity="0.9"/><path d="M2 17l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round"/><path d="M2 12l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+            <div
+              style={{
+                width: 40, height: 40, borderRadius: 10,
+                background: 'var(--medical-blue)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 20,
+              }}
+            >
+              🏥
             </div>
-            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)' }}>Smart<span style={{ color: 'var(--primary)' }}>Care</span></span>
+            <span style={{ fontWeight: 700, fontSize: 20, color: 'var(--medical-blue)' }}>SmartCare</span>
           </div>
 
-          <div style={{ marginBottom: 36 }}>
-            <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8, letterSpacing: '-0.5px' }}>
+          <div style={{ marginBottom: 32 }}>
+            <h2 style={{ fontSize: 28, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 8 }}>
               Welcome back
             </h2>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 15, fontWeight: 400 }}>
+            <p style={{ color: 'var(--text-secondary)', fontSize: 15 }}>
               Sign in to access your healthcare dashboard
             </p>
           </div>
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 20 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 7 }}>
+              <label
+                style={{
+                  display: 'block', fontSize: 13, fontWeight: 600,
+                  color: 'var(--text-primary)', marginBottom: 6,
+                }}
+              >
                 Email address
               </label>
               <div style={{ position: 'relative' }}>
-                <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M22 7l-8.97 5.7a1.94 1.94 0 01-2.06 0L2 7" stroke="currentColor" strokeWidth="1.8"/></svg>
-                <input
-                  type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
+                <span
                   style={{
-                    width: '100%', paddingLeft: 42, paddingRight: 16, paddingTop: 13, paddingBottom: 13,
-                    border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`,
-                    borderRadius: 12, fontSize: 14, background: 'var(--bg)', color: 'var(--text-primary)',
-                    outline: 'none', transition: 'all 0.2s',
+                    position: 'absolute', left: 14, top: '50%',
+                    transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16,
                   }}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = error ? '#FCA5A5' : 'var(--border)'; e.target.style.background = 'var(--bg)'; e.target.style.boxShadow = 'none'; }}
+                >
+                  ✉
+                </span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="doctor@hospital.com"
+                  style={{
+                    width: '100%', paddingLeft: 42, paddingRight: 16,
+                    paddingTop: 12, paddingBottom: 12,
+                    border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`,
+                    borderRadius: 10, fontSize: 14,
+                    background: '#fff', color: 'var(--text-primary)',
+                    outline: 'none', transition: 'border-color 0.2s',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--medical-blue)')}
+                  onBlur={(e) => (e.target.style.borderColor = error ? '#FCA5A5' : 'var(--border)')}
                 />
               </div>
             </div>
 
             <div style={{ marginBottom: 24 }}>
-              <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 7 }}>
+              <label
+                style={{
+                  display: 'block', fontSize: 13, fontWeight: 600,
+                  color: 'var(--text-primary)', marginBottom: 6,
+                }}
+              >
                 Password
               </label>
               <div style={{ position: 'relative' }}>
-                <svg style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                <input
-                  type={showPassword ? 'text' : 'password'} required value={password}
-                  onChange={(e) => setPassword(e.target.value)} placeholder="••••••••"
+                <span
                   style={{
-                    width: '100%', paddingLeft: 42, paddingRight: 44, paddingTop: 13, paddingBottom: 13,
-                    border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`,
-                    borderRadius: 12, fontSize: 14, background: 'var(--bg)', color: 'var(--text-primary)',
-                    outline: 'none', transition: 'all 0.2s',
+                    position: 'absolute', left: 14, top: '50%',
+                    transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 16,
                   }}
-                  onFocus={(e) => { e.target.style.borderColor = 'var(--primary)'; e.target.style.background = '#fff'; e.target.style.boxShadow = '0 0 0 3px rgba(20,184,166,0.1)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = error ? '#FCA5A5' : 'var(--border)'; e.target.style.background = 'var(--bg)'; e.target.style.boxShadow = 'none'; }}
+                >
+                  🔒
+                </span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{
+                    width: '100%', paddingLeft: 42, paddingRight: 44,
+                    paddingTop: 12, paddingBottom: 12,
+                    border: `1.5px solid ${error ? '#FCA5A5' : 'var(--border)'}`,
+                    borderRadius: 10, fontSize: 14,
+                    background: '#fff', color: 'var(--text-primary)',
+                    outline: 'none', transition: 'border-color 0.2s',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = 'var(--medical-blue)')}
+                  onBlur={(e) => (e.target.style.borderColor = error ? '#FCA5A5' : 'var(--border)')}
                 />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', padding: 0 }}>
-                  {showPassword ? (
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M1 1l22 22" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                  ) : (
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" stroke="currentColor" strokeWidth="1.8"/><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8"/></svg>
-                  )}
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute', right: 14, top: '50%',
+                    transform: 'translateY(-50%)', background: 'none',
+                    border: 'none', cursor: 'pointer', color: 'var(--text-muted)',
+                    fontSize: 14, padding: 0,
+                  }}
+                >
+                  {showPassword ? '🙈' : '👁'}
                 </button>
               </div>
             </div>
 
             {error && (
-              <div style={{ background: 'var(--medical-red-light)', border: '1px solid #FCA5A5', borderRadius: 12, padding: '12px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
-                <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="1.8"/><path d="M12 8v4M12 16h.01" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                <p style={{ color: '#DC2626', fontSize: 13, lineHeight: 1.5, fontWeight: 500 }}>{error}</p>
+              <div
+                style={{
+                  background: 'var(--medical-red-light)',
+                  border: '1px solid #FCA5A5',
+                  borderRadius: 10, padding: '12px 16px',
+                  marginBottom: 20,
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
+                }}
+              >
+                <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>⚠️</span>
+                <p style={{ color: 'var(--medical-red)', fontSize: 13, lineHeight: 1.5 }}>{error}</p>
               </div>
             )}
 
             <button
-              type="submit" disabled={loading}
+              type="submit"
+              disabled={loading}
               style={{
-                width: '100%', padding: '14px 24px',
-                background: loading ? 'var(--text-muted)' : 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                color: '#fff', border: 'none', borderRadius: 12,
-                fontSize: 15, fontWeight: 600,
+                width: '100%',
+                padding: '13px 24px',
+                background: loading ? '#93B8E8' : 'var(--medical-blue)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 15,
+                fontWeight: 600,
                 cursor: loading ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                marginBottom: 28,
-                boxShadow: loading ? 'none' : 'var(--shadow-teal)',
-                letterSpacing: '-0.1px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                marginBottom: 24,
+                boxShadow: loading ? 'none' : '0 4px 14px rgba(0,71,171,0.35)',
               }}
             >
               {loading ? (
                 <>
-                  <span style={{ width: 18, height: 18, border: '2.5px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', animation: 'spin 0.8s linear infinite', display: 'inline-block' }} />
+                  <span
+                    style={{
+                      width: 18, height: 18, border: '2.5px solid rgba(255,255,255,0.3)',
+                      borderTopColor: '#fff', borderRadius: '50%',
+                      animation: 'spin 0.8s linear infinite', display: 'inline-block',
+                    }}
+                  />
                   Signing in...
                 </>
               ) : (
-                'Sign In'
+                'Sign In →'
               )}
             </button>
           </form>
 
+          {/* Test credentials hint */}
+          <div
+            style={{
+              background: 'var(--medical-blue-light)',
+              borderRadius: 10,
+              padding: '14px 16px',
+              marginBottom: 24,
+              border: '1px solid #C7D8F8',
+            }}
+          >
+            <p style={{ fontSize: 12, fontWeight: 600, color: 'var(--medical-blue)', marginBottom: 6 }}>
+              🧪 Test Credentials (register first if new)
+            </p>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.8 }}>
+              <div>Patient: <code style={{ fontFamily: 'monospace', background: '#fff', padding: '1px 6px', borderRadius: 4 }}>patient@test.com / Patient@123</code></div>
+              <div>Doctor: <code style={{ fontFamily: 'monospace', background: '#fff', padding: '1px 6px', borderRadius: 4 }}>doctor@test.com / Doctor@123</code></div>
+            </div>
+          </div>
+
           <p style={{ textAlign: 'center', fontSize: 14, color: 'var(--text-secondary)' }}>
             Don't have an account?{' '}
-            <Link to="/register" style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'none' }}
+            <Link
+              to="/register"
+              style={{ color: 'var(--medical-blue)', fontWeight: 600, textDecoration: 'none' }}
               onMouseEnter={(e) => ((e.target as HTMLElement).style.textDecoration = 'underline')}
-              onMouseLeave={(e) => ((e.target as HTMLElement).style.textDecoration = 'none')}>
+              onMouseLeave={(e) => ((e.target as HTMLElement).style.textDecoration = 'none')}
+            >
               Create account
             </Link>
           </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
