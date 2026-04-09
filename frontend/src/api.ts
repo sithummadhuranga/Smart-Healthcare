@@ -1,0 +1,54 @@
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:3000',
+  withCredentials: true,
+});
+
+// Attach JWT on every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// Handle 401 globally — clear session and redirect to login
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.clear();
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  },
+);
+
+export default api;
+
+// ── JWT helpers (client-side only, no verification) ────────────────────────────
+export interface JwtClaims {
+  userId: string;
+  role: 'patient' | 'doctor' | 'admin';
+  email: string;
+  name: string;
+  exp: number;
+}
+
+export function parseToken(token: string): JwtClaims | null {
+  try {
+    const payload = token.split('.')[1];
+    const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+    return JSON.parse(decoded) as JwtClaims;
+  } catch {
+    return null;
+  }
+}
+
+export function getCurrentUser(): JwtClaims | null {
+  const token = localStorage.getItem('token');
+  if (!token) return null;
+  return parseToken(token);
+}
