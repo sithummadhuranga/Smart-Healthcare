@@ -67,19 +67,15 @@ export default function MyAppointments() {
   );
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ minHeight: '100vh', background: '#F0F4F8' }}>
       <Navbar />
 
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', padding: '44px 24px 72px', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
-        <div style={{ maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 2 }}>
-          <h1 style={{ fontFamily: 'var(--font-display)', color: '#fff', fontSize: 28, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.5px' }}>My Appointments</h1>
+      <div style={{ background: 'linear-gradient(135deg, #0047AB 0%, #0891B2 100%)', padding: '36px 24px' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <h1 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.3px' }}>My Appointments</h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>Track your upcoming and past consultations</p>
         </div>
-        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 36 }}>
-          <path d="M0,20 C360,55 1080,5 1440,25 L1440,60 L0,60 Z" fill="var(--bg)" />
-        </svg>
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 24px' }}>
@@ -88,12 +84,12 @@ export default function MyAppointments() {
             {[1, 2, 3].map((n) => <Skeleton key={n} />)}
           </div>
         ) : appointments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
+          <div style={{ textAlign: 'center', padding: '64px 0', color: '#94A3B8' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
             <p style={{ fontWeight: 600, fontSize: 15 }}>No appointments yet.</p>
             <button
               onClick={() => navigate('/patient/doctors')}
-              style={{ marginTop: 16, padding: '10px 24px', borderRadius: 9, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+              style={{ marginTop: 16, padding: '10px 24px', borderRadius: 9, background: 'linear-gradient(135deg,#0047AB,#0891B2)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
             >
               Browse Doctors
             </button>
@@ -105,20 +101,20 @@ export default function MyAppointments() {
               const canCancel = appt.status === 'PENDING' || appt.status === 'CONFIRMED';
               return (
                 <div key={appt.id} className="animate-fade-in" style={{
-                  background: '#fff', borderRadius: 14, border: '1px solid var(--border)',
+                  background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
                   padding: '18px 20px', display: 'flex', alignItems: 'center',
                   justifyContent: 'space-between', gap: 16, flexWrap: 'wrap',
-                  boxShadow: 'var(--shadow-sm)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>
-                      Doctor ID: <span style={{ color: 'var(--primary-dark)' }}>{appt.doctorId}</span>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', marginBottom: 4 }}>
+                      Doctor ID: <span style={{ color: '#0047AB' }}>{appt.doctorId}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: appt.scheduled_at ? 4 : 0 }}>
+                    <div style={{ fontSize: 13, color: '#64748B', marginBottom: appt.scheduled_at ? 4 : 0 }}>
                       {appt.reason}
                     </div>
                     {appt.scheduled_at && (
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <div style={{ fontSize: 11, color: '#94A3B8', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span>🕐</span>
                         {new Date(appt.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                       </div>
@@ -143,7 +139,7 @@ export default function MyAppointments() {
           </div>
         )}
 
-        <button onClick={() => navigate('/patient/dashboard')} style={{ marginTop: 28, background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+        <button onClick={() => navigate('/patient/dashboard')} style={{ marginTop: 28, background: 'none', border: 'none', color: '#0047AB', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           ← Back to Dashboard
         </button>
       </div>
