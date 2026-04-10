@@ -1,29 +1,43 @@
 import { useState } from 'react';
+import type { ReactElement } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../api';
 
-const NAV: Record<string, { label: string; href: string; emoji: string }[]> = {
+/* Clean minimal SVG icons — replaces emoji icons */
+const ICONS: Record<string, ReactElement> = {
+  dashboard: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/></svg>,
+  doctors: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  calendar: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  ai: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>,
+  pill: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M10.5 1.5l-8 8a4.95 4.95 0 007 7l8-8a4.95 4.95 0 00-7-7zM2.5 13.5l7-7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  clipboard: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M9 2h6v2a1 1 0 01-1 1h-4a1 1 0 01-1-1V2z" stroke="currentColor" strokeWidth="1.8"/><path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  edit: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>,
+  users: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  verify: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/></svg>,
+};
+
+const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
   patient: [
-    { label: 'Dashboard', href: '/patient/dashboard', emoji: '◉' },
-    { label: 'Find Doctors', href: '/patient/doctors', emoji: '👨‍⚕️' },
-    { label: 'Appointments', href: '/patient/appointments', emoji: '📅' },
-    { label: 'AI Checker', href: '/patient/symptom-checker', emoji: '✦' },
-    { label: 'Prescriptions', href: '/patient/prescriptions', emoji: '💊' },
+    { label: 'Dashboard', href: '/patient/dashboard', icon: 'dashboard' },
+    { label: 'Find Doctors', href: '/patient/doctors', icon: 'doctors' },
+    { label: 'Appointments', href: '/patient/appointments', icon: 'calendar' },
+    { label: 'AI Checker', href: '/patient/symptom-checker', icon: 'ai' },
+    { label: 'Prescriptions', href: '/patient/prescriptions', icon: 'pill' },
   ],
   doctor: [
-    { label: 'Dashboard', href: '/doctor/dashboard', emoji: '◉' },
-    { label: 'Appointments', href: '/doctor/appointments', emoji: '📋' },
-    { label: 'Prescriptions', href: '/doctor/prescriptions', emoji: '✏️' },
+    { label: 'Dashboard', href: '/doctor/dashboard', icon: 'dashboard' },
+    { label: 'Appointments', href: '/doctor/appointments', icon: 'clipboard' },
+    { label: 'Prescriptions', href: '/doctor/prescriptions', icon: 'edit' },
   ],
   admin: [
-    { label: 'Dashboard', href: '/admin/dashboard', emoji: '◉' },
-    { label: 'Users', href: '/admin/users', emoji: '👥' },
-    { label: 'Verify Doctors', href: '/admin/doctors', emoji: '✔️' },
+    { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
+    { label: 'Users', href: '/admin/users', icon: 'users' },
+    { label: 'Verify Doctors', href: '/admin/doctors', icon: 'verify' },
   ],
 };
 
 const ROLE_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  patient: { bg: '#EFF6FF', color: '#1D4ED8', label: 'Patient' },
+  patient: { bg: 'var(--primary-light)', color: 'var(--primary-dark)', label: 'Patient' },
   doctor: { bg: '#ECFDF5', color: '#065F46', label: 'Doctor' },
   admin: { bg: '#F5F3FF', color: '#4C1D95', label: 'Admin' },
 };
@@ -48,73 +62,87 @@ export default function Navbar() {
     <>
       <header style={{
         position: 'sticky', top: 0, zIndex: 50,
-        background: '#fff',
-        borderBottom: '1px solid #E2E8F0',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+        background: 'rgba(255,255,255,0.85)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(226,232,240,0.6)',
       }}>
         <div style={{
-          maxWidth: 1280, margin: '0 auto', padding: '0 20px',
+          maxWidth: 1280, margin: '0 auto', padding: '0 24px',
           height: 60, display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          {/* Logo */}
-          <Link to={user ? `/${user.role}/dashboard` : '/login'} style={{ display: 'flex', alignItems: 'center', gap: 9, textDecoration: 'none', marginRight: 24, flexShrink: 0 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 8, background: 'linear-gradient(135deg,#0047AB,#0891B2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17 }}>🏥</div>
-            <span style={{ fontWeight: 800, fontSize: 17, color: '#0047AB', letterSpacing: '-0.4px' }}>
-              Smart<span style={{ color: '#0891B2' }}>Care</span>
+          {/* Brand */}
+          <Link to={user ? `/${user.role}/dashboard` : '/login'} style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginRight: 32, flexShrink: 0 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff" opacity="0.9"/><path d="M2 17l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 12l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </div>
+            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', letterSpacing: '-0.5px' }}>
+              Smart<span style={{ color: 'var(--primary)' }}>Care</span>
             </span>
           </Link>
 
           {/* Desktop nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, overflow: 'hidden' }} className="hidden-mobile">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center', overflow: 'hidden' }} className="hidden-mobile">
             {links.map((l) => {
               const active = location.pathname === l.href;
               return (
                 <Link key={l.href} to={l.href} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 12px', borderRadius: 7, textDecoration: 'none',
-                  fontSize: 13, fontWeight: active ? 600 : 500,
-                  color: active ? '#0047AB' : '#64748B',
-                  background: active ? '#EFF6FF' : 'transparent',
-                  transition: 'all 0.15s', whiteSpace: 'nowrap',
+                  display: 'flex', alignItems: 'center', gap: 7,
+                  padding: '7px 16px', borderRadius: 10, textDecoration: 'none',
+                  fontSize: 13.5, fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--primary-dark)' : 'var(--text-secondary)',
+                  background: active ? 'var(--primary-50)' : 'transparent',
+                  transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', whiteSpace: 'nowrap',
+                  letterSpacing: '-0.1px',
                 }}>
-                  <span style={{ fontSize: 12 }}>{l.emoji}</span>
+                  <span style={{ display: 'flex', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[l.icon]}</span>
                   {l.label}
                 </Link>
               );
             })}
           </nav>
 
-          {/* Right */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Right side */}
+          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
             {user && badge && (
               <>
-                {/* Role badge */}
-                <span style={{ background: badge.bg, color: badge.color, fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, letterSpacing: '0.4px' }} className="hidden-mobile">
+                {/* Role badge — pill style like Medico */}
+                <span style={{
+                  background: badge.bg, color: badge.color,
+                  fontSize: 11, fontWeight: 700,
+                  padding: '4px 12px', borderRadius: 20,
+                  letterSpacing: '0.4px',
+                }} className="hidden-mobile">
                   {badge.label.toUpperCase()}
                 </span>
 
                 {/* Avatar dropdown */}
                 <div style={{ position: 'relative' }}>
                   <button onClick={() => setOpen(!open)} style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '5px 10px 5px 6px', borderRadius: 9,
-                    border: '1.5px solid #E2E8F0', background: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '5px 12px 5px 5px', borderRadius: 24,
+                    border: '1.5px solid var(--border)', background: 'none', cursor: 'pointer',
                   }}>
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: 'linear-gradient(135deg,#0047AB,#0891B2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 11, fontWeight: 700 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: 'var(--primary)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', fontSize: 12, fontWeight: 700,
+                    }}>
                       {initials}
                     </div>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="hidden-mobile">{user.name}</span>
-                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="hidden-mobile"><path d="M1 1l4 4 4-4" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} className="hidden-mobile">{user.name}</span>
+                    <svg width="10" height="6" viewBox="0 0 10 6" fill="none" className="hidden-mobile"><path d="M1 1l4 4 4-4" stroke="var(--text-muted)" strokeWidth="1.5" strokeLinecap="round"/></svg>
                   </button>
 
                   {open && (
-                    <div style={{ position: 'absolute', right: 0, top: '115%', background: '#fff', border: '1px solid #E2E8F0', borderRadius: 12, boxShadow: '0 8px 24px rgba(0,0,0,0.12)', minWidth: 210, padding: 8, zIndex: 200 }}>
-                      <div style={{ padding: '10px 12px 10px', borderBottom: '1px solid #F1F5F9', marginBottom: 4 }}>
-                        <div style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>{user.name}</div>
-                        <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 2 }}>{user.email}</div>
-                        <span style={{ marginTop: 6, display: 'inline-block', background: badge.bg, color: badge.color, fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 10 }}>{badge.label.toUpperCase()}</span>
+                    <div style={{ position: 'absolute', right: 0, top: '115%', background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(20px)', border: '1px solid var(--border)', borderRadius: 16, boxShadow: 'var(--shadow-lg)', minWidth: 220, padding: 8, zIndex: 200 }}>
+                      <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--border-light)', marginBottom: 4 }}>
+                        <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', letterSpacing: '-0.2px' }}>{user.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{user.email}</div>
+                        <span style={{ marginTop: 6, display: 'inline-block', background: badge.bg, color: badge.color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 10, letterSpacing: '0.3px' }}>{badge.label.toUpperCase()}</span>
                       </div>
-                      <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '9px 12px', background: 'none', border: 'none', borderRadius: 7, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: '#DC2626', display: 'flex', alignItems: 'center', gap: 7 }}>
+                      <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--medical-red)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>⎋</span> Sign Out
                       </button>
                     </div>
@@ -122,8 +150,8 @@ export default function Navbar() {
                 </div>
 
                 {/* Mobile hamburger */}
-                <button onClick={() => setMobileOpen(!mobileOpen)} className="show-mobile" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: '#475569' }}>
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M3 6h18M3 12h18M3 18h18"/></svg>
+                <button onClick={() => setMobileOpen(!mobileOpen)} className="show-mobile" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 6, color: 'var(--text-secondary)' }}>
+                  <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" strokeLinecap="round" d="M3 6h18M3 12h18M3 18h18"/></svg>
                 </button>
               </>
             )}
@@ -132,19 +160,19 @@ export default function Navbar() {
 
         {/* Mobile menu */}
         {mobileOpen && (
-          <div className="show-mobile" style={{ borderTop: '1px solid #E2E8F0', background: '#fff', padding: '8px 12px 12px' }}>
+          <div className="show-mobile" style={{ borderTop: '1px solid var(--border)', background: '#fff', padding: '8px 12px 12px' }}>
             {links.map((l) => (
               <Link key={l.href} to={l.href} onClick={() => setMobileOpen(false)} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', borderRadius: 8,
+                display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10,
                 textDecoration: 'none', fontSize: 14, fontWeight: 500, marginBottom: 2,
-                color: location.pathname === l.href ? '#0047AB' : '#334155',
-                background: location.pathname === l.href ? '#EFF6FF' : 'transparent',
+                color: location.pathname === l.href ? 'var(--primary-dark)' : 'var(--text-primary)',
+                background: location.pathname === l.href ? 'var(--primary-50)' : 'transparent',
               }}>
-                <span>{l.emoji}</span>{l.label}
+                <span style={{ display: 'flex', color: location.pathname === l.href ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[l.icon]}</span>{l.label}
               </Link>
             ))}
-            <div style={{ borderTop: '1px solid #F1F5F9', marginTop: 8, paddingTop: 8 }}>
-              <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: '#DC2626', fontWeight: 500 }}>
+            <div style={{ borderTop: '1px solid var(--bg-secondary)', marginTop: 8, paddingTop: 8 }}>
+              <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 14, color: 'var(--medical-red)', fontWeight: 500 }}>
                 ⎋ Sign Out
               </button>
             </div>
