@@ -39,57 +39,62 @@ export default function AdminDashboard() {
   ];
 
   const ACTIONS = [
-    { label: 'Manage Users', desc: 'View and manage all registered users', path: '/admin/users', icon: '👥', color: '#1D4ED8', bg: '#EFF6FF' },
+    { label: 'Manage Users', desc: 'View and manage all registered users', path: '/admin/users', icon: '👥', color: 'var(--primary-dark)', bg: 'var(--primary-light)' },
     { label: 'Verify Doctors', desc: 'Review and approve doctor applications', path: '/admin/doctors', icon: '✔️', color: '#92400E', bg: '#FFFBEB' },
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F0F4F8' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Navbar />
 
       {/* Hero */}
-      <div style={{ background: 'linear-gradient(135deg, #1E1B4B 0%, #4C1D95 100%)', padding: '40px 24px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', padding: '44px 24px 72px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -40, right: -40, width: 160, height: 160, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ position: 'absolute', bottom: -20, left: -20, width: 100, height: 100, borderRadius: '50%', background: 'rgba(255,255,255,0.03)' }} />
+        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 2 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.15)', borderRadius: 20, padding: '3px 12px', marginBottom: 10 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#fff', letterSpacing: '0.5px' }}>ADMIN PANEL</span>
           </div>
-          <h1 style={{ color: '#fff', fontSize: 26, fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.3px' }}>Admin Dashboard</h1>
+          <h1 style={{ fontFamily: 'var(--font-display)', color: '#fff', fontSize: 30, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.5px' }}>Admin Dashboard</h1>
           <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, margin: 0 }}>Platform overview and management controls</p>
         </div>
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 36 }}>
+          <path d="M0,20 C360,55 1080,5 1440,25 L1440,60 L0,60 Z" fill="var(--bg)" />
+        </svg>
       </div>
 
       <div style={{ maxWidth: 1100, margin: '0 auto', padding: '28px 24px' }}>
         {/* Stats grid */}
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#475569', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 14 }}>Platform Overview</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 14 }}>Platform Overview</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(200px,1fr))', gap: 12, marginBottom: 32 }}>
           {STAT_CARDS.map((s) => (
-            <div key={s.label} style={{ background: '#fff', borderRadius: 12, border: `1px solid ${s.border}`, padding: '20px 18px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+            <div key={s.label} style={{ background: '#fff', borderRadius: 14, border: `1px solid ${s.border}`, padding: '20px 18px', boxShadow: 'var(--shadow-sm)' }}>
               <div style={{ fontSize: 22, marginBottom: 10 }}>{s.icon}</div>
               <div style={{ fontSize: 30, fontWeight: 900, color: s.color, lineHeight: 1 }}>{loading ? '—' : s.value}</div>
-              <div style={{ fontSize: 12, color: '#64748B', marginTop: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{s.label}</div>
             </div>
           ))}
         </div>
 
         {/* Actions */}
-        <h2 style={{ fontSize: 14, fontWeight: 700, color: '#475569', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 14 }}>Management</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 14 }}>Management</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(260px,1fr))', gap: 14 }}>
           {ACTIONS.map((a) => (
             <button key={a.path} onClick={() => navigate(a.path)} style={{
               display: 'flex', alignItems: 'center', gap: 14, padding: '20px 18px',
-              background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0',
+              background: '#fff', borderRadius: 14, border: '1px solid var(--border)',
               cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+              boxShadow: 'var(--shadow-sm)',
             }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 16px rgba(0,0,0,0.09)'; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = '0 1px 3px rgba(0,0,0,0.05)'; }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'; (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-lg)'; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)'; }}
             >
               <div style={{ width: 48, height: 48, borderRadius: 12, background: a.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, flexShrink: 0 }}>{a.icon}</div>
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#0F172A' }}>{a.label}</div>
-                <div style={{ fontSize: 12, color: '#64748B', marginTop: 3 }}>{a.desc}</div>
+                <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>{a.label}</div>
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 3 }}>{a.desc}</div>
               </div>
-              <div style={{ marginLeft: 'auto', color: '#CBD5E1', fontSize: 18 }}>›</div>
+              <div style={{ marginLeft: 'auto', color: 'var(--border)', fontSize: 18 }}>›</div>
             </button>
           ))}
         </div>
