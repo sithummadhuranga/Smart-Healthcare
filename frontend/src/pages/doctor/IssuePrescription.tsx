@@ -55,38 +55,42 @@ export default function IssuePrescription() {
   }
 
   const inputStyle = {
-    width: '100%', borderRadius: 8, border: '1.5px solid #E2E8F0',
-    padding: '10px 12px', fontSize: 13, fontFamily: 'Inter, sans-serif',
-    color: '#0F172A', background: '#FAFBFF', outline: 'none',
+    width: '100%', borderRadius: 8, border: '1.5px solid var(--border)',
+    padding: '10px 12px', fontSize: 13, fontFamily: 'var(--font-body)',
+    color: 'var(--text-primary)', background: 'var(--bg)', outline: 'none',
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F0F4F8' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
       <Navbar />
 
-      <div style={{ background: 'linear-gradient(135deg,#065F46,#059669)', padding: '36px 24px' }}>
-        <div style={{ maxWidth: 760, margin: '0 auto' }}>
-          <h1 style={{ color: '#fff', fontSize: 24, fontWeight: 800, margin: '0 0 4px', letterSpacing: '-0.3px' }}>Issue Prescription</h1>
+      <div style={{ background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', padding: '44px 24px 72px', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: -30, right: -30, width: 140, height: 140, borderRadius: '50%', background: 'rgba(255,255,255,0.04)' }} />
+        <div style={{ maxWidth: 760, margin: '0 auto', position: 'relative', zIndex: 2 }}>
+          <h1 style={{ fontFamily: 'var(--font-display)', color: '#fff', fontSize: 28, fontWeight: 700, margin: '0 0 6px', letterSpacing: '-0.5px' }}>Issue Prescription</h1>
           <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13, margin: 0 }}>Create and send a prescription to a patient</p>
         </div>
+        <svg viewBox="0 0 1440 60" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 36 }}>
+          <path d="M0,20 C360,55 1080,5 1440,25 L1440,60 L0,60 Z" fill="var(--bg)" />
+        </svg>
       </div>
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '28px 24px' }}>
 
-        <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 14, border: '1px solid #E2E8F0', padding: 28, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', gap: 18 }}>
+        <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 28, boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#0F172A', marginBottom: 6 }}>Patient ID</label>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Patient ID</label>
             <input required value={patientId} onChange={(e) => setPatientId(e.target.value)} placeholder="Patient user ID" style={inputStyle} />
           </div>
           <div>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#0F172A', marginBottom: 6 }}>Appointment ID</label>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Appointment ID</label>
             <input required value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)} placeholder="Appointment UUID" style={inputStyle} />
           </div>
 
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <label style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>Medications</label>
-              <button type="button" onClick={addMedication} style={{ fontSize: 12, color: '#059669', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>+ Add Medication</button>
+              <label style={{ fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>Medications</label>
+              <button type="button" onClick={addMedication} style={{ fontSize: 12, color: 'var(--primary)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 700 }}>+ Add Medication</button>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {medications.map((med, i) => (
@@ -103,16 +107,16 @@ export default function IssuePrescription() {
           </div>
 
           <div>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: '#0F172A', marginBottom: 6 }}>Notes</label>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Notes</label>
             <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional instructions or clinical notes..." style={{ ...inputStyle, resize: 'none' }} />
           </div>
 
-          <button type="submit" disabled={loading} style={{ padding: '13px 0', borderRadius: 10, background: loading ? '#86EFAC' : 'linear-gradient(135deg,#059669,#065F46)', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
+          <button type="submit" disabled={loading} style={{ padding: '13px 0', borderRadius: 10, background: loading ? 'var(--border)' : 'var(--primary)', color: '#fff', border: 'none', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 14 }}>
             {loading ? 'Issuing Prescription…' : '✓ Issue Prescription'}
           </button>
         </form>
 
-        <button onClick={() => navigate('/doctor/dashboard')} style={{ marginTop: 24, background: 'none', border: 'none', color: '#0047AB', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+        <button onClick={() => navigate('/doctor/dashboard')} style={{ marginTop: 24, background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           ← Back to Dashboard
         </button>
       </div>

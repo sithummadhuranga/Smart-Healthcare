@@ -1,33 +1,59 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* ─── Design System ─────────────────────────────────────────── */
+/* ─── Design System — Modern 2026 Healthcare ────────────────── */
 :root {
-  --medical-blue: #0047AB;
-  --medical-blue-dark: #003380;
-  --medical-blue-light: #E8F0FE;
-  --medical-teal: #0891B2;
-  --medical-teal-light: #E0F7FA;
+  /* Primary — vibrant modern teal */
+  --primary: #14B8A6;
+  --primary-dark: #0D9488;
+  --primary-deeper: #0F766E;
+  --primary-light: #CCFBF1;
+  --primary-50: #F0FDFA;
+  /* Legacy aliases */
+  --medical-blue: #14B8A6;
+  --medical-blue-dark: #0D9488;
+  --medical-blue-light: #CCFBF1;
+  /* Accent palette */
+  --accent-blue: #3B82F6;
+  --accent-violet: #8B5CF6;
+  --accent-amber: #F59E0B;
+  --accent-coral: #F97316;
+  /* Semantic colours */
+  --medical-teal: #14B8A6;
+  --medical-teal-light: #CCFBF1;
   --medical-green: #059669;
   --medical-green-light: #D1FAE5;
   --medical-amber: #D97706;
   --medical-amber-light: #FEF3C7;
-  --medical-red: #DC2626;
+  --medical-red: #EF4444;
   --medical-red-light: #FEE2E2;
-  --medical-purple: #7C3AED;
+  --medical-purple: #8B5CF6;
+  /* Neutrals */
+  --dark-navy: #0F172A;
   --surface: #FFFFFF;
-  --bg: #F0F4F8;
-  --bg-secondary: #E8EEF4;
-  --text-primary: #0D1B2A;
-  --text-secondary: #4A5568;
-  --text-muted: #8FA3B1;
-  --border: #D0DCE8;
-  --shadow-sm: 0 1px 3px rgba(0,71,171,0.08), 0 1px 2px rgba(0,71,171,0.05);
-  --shadow-md: 0 4px 12px rgba(0,71,171,0.12), 0 2px 4px rgba(0,71,171,0.06);
-  --shadow-lg: 0 10px 30px rgba(0,71,171,0.15), 0 4px 10px rgba(0,71,171,0.08);
+  --bg: #F8FAFB;
+  --bg-secondary: #F1F5F9;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --text-muted: #94A3B8;
+  --border: #E2E8F0;
+  --border-light: #F1F5F9;
+  /* Shadows — softer, more modern */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  --shadow-xl: 0 20px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(0,0,0,0.05);
+  --shadow-teal: 0 8px 24px rgba(20,184,166,0.2);
+  /* Radii */
   --radius: 12px;
   --radius-sm: 8px;
   --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  /* Fonts — Plus Jakarta Sans (modern geometric, Nacelle-like) */
+  --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 * {
@@ -37,25 +63,27 @@
 }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   background-color: var(--bg);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+  font-variation-settings: 'opsz' auto;
 }
 
 /* ─── Scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #b0c4d8; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #B0BEC5; }
 
 /* ─── Smooth transitions ────────────────────────────────────── */
-a, button { transition: all 0.18s ease; }
+a, button { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
 
 /* ─── Focus ring ────────────────────────────────────────────── */
 *:focus-visible {
-  outline: 2px solid var(--medical-blue);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
   border-radius: var(--radius-sm);
 }
@@ -76,13 +104,27 @@ a, button { transition: all 0.18s ease; }
 
 /* ─── Animations ─────────────────────────────────────────────── */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes float {
+  0%,100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
 
-.animate-fade-in { animation: fadeIn 0.25s ease forwards; }
+.animate-fade-in  { animation: fadeIn 0.35s cubic-bezier(0.4,0,0.2,1) forwards; }
+.animate-fade-up  { animation: fadeInUp 0.5s cubic-bezier(0.4,0,0.2,1) forwards; }
 .animate-spin     { animation: spin 1s linear infinite; }
 .animate-pulse    { animation: pulse 1.5s ease-in-out infinite; }
+.animate-float    { animation: float 3s ease-in-out infinite; }
 
