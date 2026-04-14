@@ -9,12 +9,12 @@ import {
   getPatientById,
   listPatients,
   getPatientByUserId,
+  getPatientReportsByUserId,
 } from '../controllers/patientController';
 import { verifyToken, requireRole } from '../middleware/verifyToken';
 import { upload } from '../config/cloudinary';
 
 const router = Router();
-
 // ── Patient self-service routes ───────────────────────────────────────────────
 
 /**
@@ -270,5 +270,6 @@ router.get('/:id', verifyToken, requireRole('admin'), getPatientById);
  *         description: Patient not found
  */
 router.get('/internal/:userId', getPatientByUserId);
+router.get('/internal/:userId/reports', getPatientReportsByUserId);
 
 export default router;
