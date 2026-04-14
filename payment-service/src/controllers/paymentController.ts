@@ -1,6 +1,7 @@
 // FILE: src/controllers/paymentController.ts
 import axios, { AxiosError } from 'axios';
 import { Response } from 'express';
+import { PoolClient } from 'pg';
 import Stripe from 'stripe';
 import { ensureDatabaseConnection, pool } from '../db/pool';
 import { AuthenticatedRequest } from '../middleware/authMiddleware';
@@ -32,8 +33,21 @@ type PaymentRow = {
   updated_at: string;
 };
 
+type PaymentWebhookEventRow = {
+  event_id: string;
+  event_type: string;
+  status: 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  stripe_payment_intent_id: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 const DEFAULT_CONSULTATION_FEE = 25.0;
 const DEFAULT_CURRENCY = 'usd';
+const WEBHOOK_PROCESSING_STATUS = 'PROCESSING';
+const WEBHOOK_COMPLETED_STATUS = 'COMPLETED';
+const WEBHOOK_FAILED_STATUS = 'FAILED';
 
 let stripeClient: Stripe | null = null;
 
@@ -92,6 +106,137 @@ const formatPayment = (row: PaymentRow) => ({
   stripeChargeId: row.stripe_charge_id,
   createdAt: row.created_at,
 });
+
+const runWithClient = async <T>(callback: (client: PoolClient) => Promise<T>): Promise<T> => {
+  const client = await pool.connect();
+
+  try {
+    return await callback(client);
+  } finally {
+    client.release();
+  }
+};
+
+const lockAppointment = async (client: PoolClient, appointmentId: string): Promise<void> => {
+  await client.query('SELECT pg_advisory_lock(hashtext($1))', [appointmentId]);
+};
+
+const unlockAppointment = async (client: PoolClient, appointmentId: string): Promise<void> => {
+  try {
+    await client.query('SELECT pg_advisory_unlock(hashtext($1))', [appointmentId]);
+  } catch {
+    // ignore unlock errors during shutdown/error handling
+  }
+};
+
+const getStripeIdempotencyKey = (appointmentId: string, patientId: string, paymentRowId: string): string =>
+  `payment-intent:${appointmentId}:${patientId}:${paymentRowId}`;
+
+const readCompletedPayment = async (client: PoolClient, appointmentId: string): Promise<PaymentRow | null> => {
+  const result = await client.query<PaymentRow>(
+    `SELECT *
+     FROM payments
+     WHERE appointment_id = $1 AND status = 'COMPLETED'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [appointmentId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const readLatestPendingPayment = async (client: PoolClient, appointmentId: string): Promise<PaymentRow | null> => {
+  const result = await client.query<PaymentRow>(
+    `SELECT *
+     FROM payments
+     WHERE appointment_id = $1 AND status = 'PENDING'
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [appointmentId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const createPendingPaymentRow = async (
+  client: PoolClient,
+  appointmentId: string,
+  patientId: string,
+  amount: number
+): Promise<PaymentRow> => {
+  const result = await client.query<PaymentRow>(
+    `INSERT INTO payments (
+      appointment_id,
+      patient_id,
+      amount,
+      currency,
+      status
+    )
+    VALUES ($1, $2, $3, $4, 'PENDING')
+    RETURNING *`,
+    [appointmentId, patientId, amount.toFixed(2), DEFAULT_CURRENCY]
+  );
+
+  return result.rows[0];
+};
+
+const updatePaymentIntentRow = async (
+  client: PoolClient,
+  paymentRowId: string,
+  amount: number,
+  paymentIntentId: string,
+  currency: string
+): Promise<void> => {
+  await client.query(
+    `UPDATE payments
+     SET amount = $1,
+         currency = $2,
+         stripe_payment_intent_id = $3,
+         status = 'PENDING',
+         updated_at = NOW()
+     WHERE id = $4`,
+    [amount.toFixed(2), currency, paymentIntentId, paymentRowId]
+  );
+};
+
+const readWebhookEvent = async (client: PoolClient, eventId: string): Promise<PaymentWebhookEventRow | null> => {
+  const result = await client.query<PaymentWebhookEventRow>(
+    `SELECT *
+     FROM payment_webhook_events
+     WHERE event_id = $1
+     LIMIT 1`,
+    [eventId]
+  );
+
+  return result.rows[0] ?? null;
+};
+
+const upsertWebhookEventStatus = async (
+  client: PoolClient,
+  eventId: string,
+  eventType: string,
+  stripePaymentIntentId: string | null,
+  status: PaymentWebhookEventRow['status'],
+  lastError: string | null = null
+): Promise<void> => {
+  await client.query(
+    `INSERT INTO payment_webhook_events (
+      event_id,
+      event_type,
+      stripe_payment_intent_id,
+      status,
+      last_error
+    )
+    VALUES ($1, $2, $3, $4, $5)
+    ON CONFLICT (event_id) DO UPDATE
+    SET event_type = EXCLUDED.event_type,
+        stripe_payment_intent_id = EXCLUDED.stripe_payment_intent_id,
+        status = EXCLUDED.status,
+        last_error = EXCLUDED.last_error,
+        updated_at = NOW()`,
+    [eventId, eventType, stripePaymentIntentId, status, lastError]
+  );
+};
 
 const buildAxiosErrorResponse = (error: unknown, defaultMessage: string): { status: number; message: string } => {
   if (axios.isAxiosError(error)) {
@@ -234,79 +379,89 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
       return;
     }
 
-    const existingPaymentResult = await pool.query<PaymentRow>(
-      `SELECT *
-       FROM payments
-       WHERE appointment_id = $1 AND status = 'PENDING'
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [appointmentId]
-    );
-
     const stripe = getStripeClient();
+    const consultationFee = await fetchConsultationFee(appointmentDoctorId);
+    const result = await runWithClient(async (client) => {
+      await lockAppointment(client, appointmentId);
 
-    if (existingPaymentResult.rows.length > 0) {
-      const existingPayment = existingPaymentResult.rows[0];
+      try {
+        const completedPayment = await readCompletedPayment(client, appointmentId);
 
-      if (existingPayment.stripe_payment_intent_id) {
-        const existingIntent = await stripe.paymentIntents.retrieve(existingPayment.stripe_payment_intent_id);
+        if (completedPayment) {
+          return {
+            status: 'completed' as const,
+            payment: completedPayment,
+          };
+        }
 
-        res.status(201).json({
-          clientSecret: existingIntent.client_secret,
-          paymentIntentId: existingIntent.id,
-          amount: existingIntent.amount,
-          currency: existingIntent.currency,
-        });
-        return;
+        const pendingPayment = await readLatestPendingPayment(client, appointmentId);
+        const targetPayment = pendingPayment ?? (await createPendingPaymentRow(client, appointmentId, user.userId, consultationFee));
+
+        if (targetPayment.stripe_payment_intent_id) {
+          const existingIntent = await stripe.paymentIntents.retrieve(targetPayment.stripe_payment_intent_id);
+
+          if (!existingIntent.client_secret) {
+            throw new Error('Stripe PaymentIntent is missing client secret');
+          }
+
+          return {
+            status: 'existing' as const,
+            payment: targetPayment,
+            clientSecret: existingIntent.client_secret,
+            paymentIntentId: existingIntent.id,
+            amount: existingIntent.amount,
+            currency: existingIntent.currency,
+          };
+        }
+
+        const paymentIntent = await stripe.paymentIntents.create(
+          {
+            amount: Math.round(consultationFee * 100),
+            currency: DEFAULT_CURRENCY,
+            metadata: {
+              appointmentId,
+              patientId: user.userId,
+              paymentId: targetPayment.id,
+            },
+          },
+          {
+            idempotencyKey: getStripeIdempotencyKey(appointmentId, user.userId, targetPayment.id),
+          }
+        );
+
+        if (!paymentIntent.client_secret) {
+          throw new Error('Stripe PaymentIntent is missing client secret');
+        }
+
+        await updatePaymentIntentRow(client, targetPayment.id, consultationFee, paymentIntent.id, paymentIntent.currency || DEFAULT_CURRENCY);
+
+        return {
+          status: 'created' as const,
+          payment: targetPayment,
+          clientSecret: paymentIntent.client_secret,
+          paymentIntentId: paymentIntent.id,
+          amount: paymentIntent.amount,
+          currency: paymentIntent.currency,
+        };
+      } finally {
+        await unlockAppointment(client, appointmentId);
       }
+    });
 
-      const consultationFee = await fetchConsultationFee(appointmentDoctorId);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(consultationFee * 100),
-        currency: DEFAULT_CURRENCY,
-        metadata: {
-          appointmentId,
-          patientId: user.userId,
-        },
-      });
-
-      await pool.query(
-        `UPDATE payments
-         SET amount = $1,
-             currency = $2,
-             stripe_payment_intent_id = $3,
-             updated_at = NOW()
-         WHERE id = $4`,
-        [consultationFee.toFixed(2), DEFAULT_CURRENCY, paymentIntent.id, existingPayment.id]
-      );
-
-      res.status(201).json({
-        clientSecret: paymentIntent.client_secret,
-        paymentIntentId: paymentIntent.id,
-        amount: paymentIntent.amount,
-        currency: paymentIntent.currency,
+    if (result.status === 'completed') {
+      res.status(409).json({
+        error: 'Payment has already been completed for this appointment',
+        payment: formatPayment(result.payment),
       });
       return;
     }
 
-    const consultationFee = await fetchConsultationFee(appointmentDoctorId);
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: Math.round(consultationFee * 100),
-      currency: DEFAULT_CURRENCY,
-      metadata: {
-        appointmentId,
-        patientId: user.userId,
-      },
-    });
-
-    const createdPayment = await createPaymentRecord(appointmentId, user.userId, consultationFee, paymentIntent.id);
-
     res.status(201).json({
-      clientSecret: paymentIntent.client_secret,
-      paymentIntentId: paymentIntent.id,
-      amount: paymentIntent.amount,
-      currency: paymentIntent.currency,
-      paymentId: createdPayment.id,
+      clientSecret: result.clientSecret,
+      paymentIntentId: result.paymentIntentId,
+      amount: result.amount,
+      currency: result.currency,
+      paymentId: result.payment.id,
     });
   } catch (error) {
     if (error instanceof Error && error.message === 'APPOINTMENT_SERVICE_UNAVAILABLE') {
@@ -341,133 +496,171 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const stripe = getStripeClient();
 
+    if (!webhookSecret) {
+      res.status(500).json({ error: 'Stripe webhook secret is not configured' });
+      return;
+    }
+
     let event: Stripe.Event;
 
-    if (webhookSecret) {
-      if (typeof sig !== 'string') {
-        res.status(400).json({ error: 'Missing Stripe signature header' });
-        return;
-      }
-
-      try {
-        event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'Invalid Stripe webhook signature';
-        res.status(400).json({ error: message });
-        return;
-      }
-    } else {
-      const rawBody = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : String(req.body || '');
-
-      try {
-        event = JSON.parse(rawBody) as Stripe.Event;
-      } catch {
-        res.status(400).json({ error: 'Invalid webhook payload' });
-        return;
-      }
+    if (typeof sig !== 'string') {
+      res.status(400).json({ error: 'Missing Stripe signature header' });
+      return;
     }
 
-    if (event.type === 'payment_intent.succeeded') {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-      const appointmentId = paymentIntent.metadata?.appointmentId;
-      const patientId = paymentIntent.metadata?.patientId;
-      const stripeChargeId = typeof paymentIntent.latest_charge === 'string'
-        ? paymentIntent.latest_charge
-        : paymentIntent.latest_charge
-          ? String(paymentIntent.latest_charge)
-          : null;
+    try {
+      event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Invalid Stripe webhook signature';
+      res.status(400).json({ error: message });
+      return;
+    }
 
-      if (!appointmentId || !patientId) {
-        res.status(400).json({ error: 'PaymentIntent metadata is incomplete' });
-        return;
-      }
+    const supportedPaymentEvent =
+      event.type === 'payment_intent.succeeded' || event.type === 'payment_intent.payment_failed'
+        ? (event.data.object as Stripe.PaymentIntent)
+        : null;
+    const stripePaymentIntentId = supportedPaymentEvent?.id ?? null;
 
-      const updateResult = await pool.query<PaymentRow>(
-        `UPDATE payments
-         SET status = 'COMPLETED',
-             stripe_charge_id = $1,
-             updated_at = NOW()
-         WHERE stripe_payment_intent_id = $2
-         RETURNING *`,
-        [stripeChargeId, paymentIntent.id]
-      );
-
-      if (updateResult.rowCount === 0) {
-        await pool.query(
-          `INSERT INTO payments (
-            appointment_id,
-            patient_id,
-            amount,
-            currency,
-            stripe_payment_intent_id,
-            stripe_charge_id,
-            status
-          )
-          VALUES ($1, $2, $3, $4, $5, $6, 'COMPLETED')
-          ON CONFLICT (stripe_payment_intent_id) DO UPDATE
-          SET status = 'COMPLETED',
-              stripe_charge_id = EXCLUDED.stripe_charge_id,
-              updated_at = NOW()`,
-          [
-            appointmentId,
-            patientId,
-            (paymentIntent.amount / 100).toFixed(2),
-            paymentIntent.currency || DEFAULT_CURRENCY,
-            paymentIntent.id,
-            stripeChargeId,
-          ]
-        );
-      }
+    await runWithClient(async (client) => {
+      await lockAppointment(client, event.id);
 
       try {
-        const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
-        const internalApiKey = process.env.INTERNAL_SERVICE_API_KEY;
+        const existingWebhookEvent = await readWebhookEvent(client, event.id);
 
-        if (!internalApiKey) {
-          throw new Error('INTERNAL_SERVICE_API_KEY is required for internal appointment updates');
+        if (existingWebhookEvent?.status === WEBHOOK_COMPLETED_STATUS) {
+          return;
         }
 
-        await axios.patch(
-          `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}/pay`,
-          {},
-          {
-            headers: {
-              'x-internal-api-key': internalApiKey,
-            },
-            timeout: 5_000,
+        await upsertWebhookEventStatus(client, event.id, event.type, stripePaymentIntentId, WEBHOOK_PROCESSING_STATUS);
+
+        if (event.type === 'payment_intent.succeeded') {
+          if (!supportedPaymentEvent) {
+            throw new Error('Unexpected webhook payload for payment_intent.succeeded');
           }
-        );
+
+          const appointmentId = supportedPaymentEvent.metadata?.appointmentId;
+          const patientId = supportedPaymentEvent.metadata?.patientId;
+          const stripeChargeId = typeof supportedPaymentEvent.latest_charge === 'string'
+            ? supportedPaymentEvent.latest_charge
+            : supportedPaymentEvent.latest_charge
+              ? String(supportedPaymentEvent.latest_charge)
+              : null;
+
+          if (!appointmentId || !patientId) {
+            throw new Error('PaymentIntent metadata is incomplete');
+          }
+
+          await client.query(
+            `UPDATE payments
+             SET status = 'COMPLETED',
+                 stripe_charge_id = $1,
+                 updated_at = NOW()
+             WHERE stripe_payment_intent_id = $2`,
+            [stripeChargeId, stripePaymentIntentId]
+          );
+
+          const paymentRecordResult = await client.query<PaymentRow>(
+            `SELECT *
+             FROM payments
+             WHERE stripe_payment_intent_id = $1
+             LIMIT 1`,
+            [stripePaymentIntentId]
+          );
+
+          if (paymentRecordResult.rows.length === 0) {
+            await client.query(
+              `INSERT INTO payments (
+                appointment_id,
+                patient_id,
+                amount,
+                currency,
+                stripe_payment_intent_id,
+                stripe_charge_id,
+                status
+              )
+              VALUES ($1, $2, $3, $4, $5, $6, 'COMPLETED')
+              ON CONFLICT (stripe_payment_intent_id) DO UPDATE
+              SET status = 'COMPLETED',
+                  stripe_charge_id = EXCLUDED.stripe_charge_id,
+                  updated_at = NOW()`,
+              [
+                appointmentId,
+                patientId,
+                (supportedPaymentEvent.amount / 100).toFixed(2),
+                supportedPaymentEvent.currency || DEFAULT_CURRENCY,
+                stripePaymentIntentId,
+                stripeChargeId,
+              ]
+            );
+          }
+
+          try {
+            const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
+            const internalApiKey = process.env.INTERNAL_SERVICE_API_KEY;
+
+            if (!internalApiKey) {
+              throw new Error('INTERNAL_SERVICE_API_KEY is required for internal appointment updates');
+            }
+
+            await axios.patch(
+              `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}/pay`,
+              {},
+              {
+                headers: {
+                  'x-internal-api-key': internalApiKey,
+                },
+                timeout: 5_000,
+              }
+            );
+          } catch (error) {
+            console.warn('[payment-service] Failed to update appointment status to PAID:', error);
+          }
+
+          await publishEvent('payment.confirmed', {
+            appointmentId,
+            patientId,
+            amount: supportedPaymentEvent.amount / 100,
+            currency: supportedPaymentEvent.currency,
+            paymentIntentId: stripePaymentIntentId,
+          });
+
+          console.log(`[payment-service] Payment succeeded for appointment ${appointmentId}`);
+        }
+
+        if (event.type === 'payment_intent.payment_failed') {
+          if (!supportedPaymentEvent) {
+            throw new Error('Unexpected webhook payload for payment_intent.payment_failed');
+          }
+
+          await client.query(
+            `UPDATE payments
+             SET status = 'FAILED',
+                 updated_at = NOW()
+             WHERE stripe_payment_intent_id = $1`,
+            [stripePaymentIntentId]
+          );
+
+          console.log(`[payment-service] Payment failed for intent ${stripePaymentIntentId}`);
+        }
+
+        await upsertWebhookEventStatus(client, event.id, event.type, stripePaymentIntentId, WEBHOOK_COMPLETED_STATUS);
       } catch (error) {
-        console.warn('[payment-service] Failed to update appointment status to PAID:', error);
+        const message = error instanceof Error ? error.message : 'Webhook processing failed';
+        await upsertWebhookEventStatus(client, event.id, event.type, stripePaymentIntentId, WEBHOOK_FAILED_STATUS, message);
+        throw error;
+      } finally {
+        await unlockAppointment(client, event.id);
       }
-
-      await publishEvent('payment.confirmed', {
-        appointmentId,
-        patientId,
-        amount: paymentIntent.amount / 100,
-        currency: paymentIntent.currency,
-        paymentIntentId: paymentIntent.id,
-      });
-
-      console.log(`[payment-service] Payment succeeded for appointment ${appointmentId}`);
-    }
-
-    if (event.type === 'payment_intent.payment_failed') {
-      const paymentIntent = event.data.object as Stripe.PaymentIntent;
-
-      await pool.query(
-        `UPDATE payments
-         SET status = 'FAILED',
-             updated_at = NOW()
-         WHERE stripe_payment_intent_id = $1`,
-        [paymentIntent.id]
-      );
-
-      console.log(`[payment-service] Payment failed for intent ${paymentIntent.id}`);
-    }
+    });
 
     res.status(200).json({ received: true });
   } catch (error) {
+    if (error instanceof Error && error.message === 'PaymentIntent metadata is incomplete') {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
     console.error('[payment-service] handleWebhook failed', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }

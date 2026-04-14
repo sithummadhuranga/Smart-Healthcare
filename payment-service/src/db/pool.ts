@@ -71,9 +71,19 @@ const schemaStatements = [
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
   );`,
+  `CREATE TABLE IF NOT EXISTS payment_webhook_events (
+    event_id VARCHAR PRIMARY KEY,
+    event_type VARCHAR NOT NULL,
+    stripe_payment_intent_id VARCHAR,
+    status VARCHAR NOT NULL DEFAULT 'PROCESSING',
+    last_error TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+  );`,
   'CREATE INDEX IF NOT EXISTS idx_payments_appointment_id_created_at ON payments (appointment_id, created_at DESC);',
   'CREATE INDEX IF NOT EXISTS idx_payments_patient_id_created_at ON payments (patient_id, created_at DESC);',
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_pending_appointment ON payments (appointment_id) WHERE status = 'PENDING';",
+  'CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_status ON payment_webhook_events (status, created_at DESC);',
 ];
 
 export const initializeDatabase = async (): Promise<void> => {
