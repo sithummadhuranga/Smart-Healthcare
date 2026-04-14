@@ -22,6 +22,15 @@ let consumerRunning = false;
 
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
 
+const safeNotify = async (label: string, action: () => Promise<void>): Promise<void> => {
+  try {
+    await action();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[notification-service] ${label} failed: ${message}`);
+  }
+};
+
 const connectToRabbitMQ = async (): Promise<void> => {
   let attempt = 0;
 
@@ -82,21 +91,25 @@ const handleAppointmentBooked = async (event: NotificationEvent): Promise<void> 
   console.log(`[notification-service] Processing appointment.booked for appointment ${appointmentId}`);
 
   if (patientPhone && typeof patientPhone === 'string') {
-    await sendSMS(
-      patientPhone,
-      `Your appointment with Dr. ${doctorName} has been requested. We will confirm shortly.`
+    await safeNotify('SMS appointment.booked', async () =>
+      sendSMS(
+        patientPhone,
+        `Your appointment with Dr. ${doctorName} has been requested. We will confirm shortly.`
+      )
     );
   }
 
   if (patientEmail && typeof patientEmail === 'string') {
     const scheduledDate = scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'TBD';
     const scheduledTime = scheduledAt ? new Date(String(scheduledAt)).toLocaleTimeString() : 'TBD';
-    await emailService.sendAppointmentBookedEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      String(doctorName || 'Doctor'),
-      scheduledDate,
-      scheduledTime
+    await safeNotify('Email appointment.booked', async () =>
+      emailService.sendAppointmentBookedEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        String(doctorName || 'Doctor'),
+        scheduledDate,
+        scheduledTime
+      )
     );
   }
 
@@ -105,9 +118,11 @@ const handleAppointmentBooked = async (event: NotificationEvent): Promise<void> 
   }
 
   if (doctorEmail && typeof doctorEmail === 'string') {
-    await emailService.sendDoctorNewAppointmentEmail(
-      doctorEmail,
-      String(patientName || 'Patient')
+    await safeNotify('Email doctor.new-appointment', async () =>
+      emailService.sendDoctorNewAppointmentEmail(
+        doctorEmail,
+        String(patientName || 'Patient')
+      )
     );
   }
 };
@@ -118,19 +133,23 @@ const handleAppointmentConfirmed = async (event: NotificationEvent): Promise<voi
   console.log(`[notification-service] Processing appointment.confirmed for appointment ${appointmentId}`);
 
   if (patientPhone && typeof patientPhone === 'string') {
-    await sendSMS(
-      patientPhone,
-      `Great! Dr. ${doctorName} has confirmed your appointment. Please complete payment to proceed.`
+    await safeNotify('SMS appointment.confirmed', async () =>
+      sendSMS(
+        patientPhone,
+        `Great! Dr. ${doctorName} has confirmed your appointment. Please complete payment to proceed.`
+      )
     );
   }
 
   if (patientEmail && typeof patientEmail === 'string') {
     const paymentLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/payment/${appointmentId}`;
-    await emailService.sendAppointmentConfirmedEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      String(doctorName || 'Doctor'),
-      paymentLink
+    await safeNotify('Email appointment.confirmed', async () =>
+      emailService.sendAppointmentConfirmedEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        String(doctorName || 'Doctor'),
+        paymentLink
+      )
     );
   }
 };
@@ -141,21 +160,25 @@ const handlePaymentConfirmed = async (event: NotificationEvent): Promise<void> =
   console.log(`[notification-service] Processing payment.confirmed for appointment ${appointmentId}`);
 
   if (patientPhone && typeof patientPhone === 'string') {
-    await sendSMS(
-      patientPhone,
-      `Payment of $${amount} received! Your consultation with Dr. ${doctorName} is ready. Join the video call at the scheduled time.`
+    await safeNotify('SMS payment.confirmed', async () =>
+      sendSMS(
+        patientPhone,
+        `Payment of $${amount} received! Your consultation with Dr. ${doctorName} is ready. Join the video call at the scheduled time.`
+      )
     );
   }
 
   if (patientEmail && typeof patientEmail === 'string') {
     const scheduledDate = scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'Soon';
     const fee = typeof amount === 'number' ? amount : 25.0;
-    await emailService.sendPaymentConfirmedEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      String(doctorName || 'Doctor'),
-      fee,
-      scheduledDate
+    await safeNotify('Email payment.confirmed', async () =>
+      emailService.sendPaymentConfirmedEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        String(doctorName || 'Doctor'),
+        fee,
+        scheduledDate
+      )
     );
   }
 };
@@ -166,10 +189,12 @@ const handleConsultationCompleted = async (event: NotificationEvent): Promise<vo
   console.log(`[notification-service] Processing consultation.completed for appointment ${appointmentId}`);
 
   if (patientEmail && typeof patientEmail === 'string') {
-    await emailService.sendConsultationCompletedEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      String(doctorName || 'Doctor')
+    await safeNotify('Email consultation.completed', async () =>
+      emailService.sendConsultationCompletedEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        String(doctorName || 'Doctor')
+      )
     );
   }
 };
@@ -180,10 +205,12 @@ const handlePrescriptionIssued = async (event: NotificationEvent): Promise<void>
   console.log(`[notification-service] Processing prescription.issued for appointment ${appointmentId}`);
 
   if (patientEmail && typeof patientEmail === 'string') {
-    await emailService.sendPrescriptionIssuedEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      String(doctorName || 'Doctor')
+    await safeNotify('Email prescription.issued', async () =>
+      emailService.sendPrescriptionIssuedEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        String(doctorName || 'Doctor')
+      )
     );
   }
 };
@@ -203,32 +230,40 @@ const handleAppointmentCancelled = async (event: NotificationEvent): Promise<voi
   console.log(`[notification-service] Processing appointment.cancelled for appointment ${appointmentId}`);
 
   if (patientPhone && typeof patientPhone === 'string') {
-    await sendSMS(
-      patientPhone,
-      `Your appointment with Dr. ${doctorName} has been cancelled. You will receive a refund within 3-5 business days.`
+    await safeNotify('SMS appointment.cancelled.patient', async () =>
+      sendSMS(
+        patientPhone,
+        `Your appointment with Dr. ${doctorName} has been cancelled. You will receive a refund within 3-5 business days.`
+      )
     );
   }
 
   if (doctorPhone && typeof doctorPhone === 'string') {
-    await sendSMS(
-      doctorPhone,
-      `Appointment on ${scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'scheduled date'} has been cancelled.`
+    await safeNotify('SMS appointment.cancelled.doctor', async () =>
+      sendSMS(
+        doctorPhone,
+        `Appointment on ${scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'scheduled date'} has been cancelled.`
+      )
     );
   }
 
   if (patientEmail && typeof patientEmail === 'string') {
-    await emailService.sendAppointmentCancelledEmail(
-      patientEmail,
-      String(patientName || 'Valued Patient'),
-      scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'N/A'
+    await safeNotify('Email appointment.cancelled.patient', async () =>
+      emailService.sendAppointmentCancelledEmail(
+        patientEmail,
+        String(patientName || 'Valued Patient'),
+        scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'N/A'
+      )
     );
   }
 
   if (doctorEmail && typeof doctorEmail === 'string') {
-    await emailService.sendAppointmentCancelledEmail(
-      doctorEmail,
-      String(doctorName || 'Doctor'),
-      scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'N/A'
+    await safeNotify('Email appointment.cancelled.doctor', async () =>
+      emailService.sendAppointmentCancelledEmail(
+        doctorEmail,
+        String(doctorName || 'Doctor'),
+        scheduledAt ? new Date(String(scheduledAt)).toLocaleDateString() : 'N/A'
+      )
     );
   }
 };

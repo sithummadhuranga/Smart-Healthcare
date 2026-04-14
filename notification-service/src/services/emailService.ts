@@ -1,18 +1,26 @@
 import sgMail from '@sendgrid/mail';
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@healthcare.local';
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
 
 function initializeSendGrid(): boolean {
-  const apiKey = process.env.SENDGRID_API_KEY;
-  if (!apiKey) {
+  if (!SENDGRID_API_KEY) {
     return false;
   }
 
-  sgMail.setApiKey(apiKey);
+  sgMail.setApiKey(SENDGRID_API_KEY);
   return true;
 }
 
 const sendGridReady = initializeSendGrid();
+
+export function isEmailConfigured(): boolean {
+  return sendGridReady;
+}
+
+export function getEmailProviderStatus(): 'active' | 'degraded' {
+  return sendGridReady ? 'active' : 'degraded';
+}
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (!sendGridReady) {

@@ -2,6 +2,14 @@ import twilio from 'twilio';
 
 let client: ReturnType<typeof twilio> | null = null;
 
+export function isSmsConfigured(): boolean {
+  return Boolean(process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER);
+}
+
+export function getSmsProviderStatus(): 'active' | 'degraded' {
+  return isSmsConfigured() ? 'active' : 'degraded';
+}
+
 function getTwilioClient(): ReturnType<typeof twilio> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;

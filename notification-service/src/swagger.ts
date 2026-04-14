@@ -43,6 +43,8 @@ const options: swaggerJsdoc.Options = {
                       status: { type: 'string', example: 'ok' },
                       service: { type: 'string', example: 'notification-service' },
                       consumer: { type: 'string', enum: ['active', 'initializing'] },
+                      email: { type: 'string', enum: ['active', 'degraded'] },
+                      sms: { type: 'string', enum: ['active', 'degraded'] },
                     },
                   },
                 },
