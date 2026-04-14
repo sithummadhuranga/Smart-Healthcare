@@ -13,11 +13,17 @@ interface SessionState {
   channelName: string;
   status: 'IN_PROGRESS' | 'COMPLETED';
   startedAt: string;
+  doctorId?: string;
+  patientId?: string;
   endedAt?: string;
   duration?: string;
 }
 
 const sessions = new Map<string, SessionState>();
+
+function isStandaloneMode(): boolean {
+  return String(process.env.TELEMEDICINE_STANDALONE_MODE || '').toLowerCase() === 'true';
+}
 
 function handleAppointmentDependencyError(error: unknown, res: Response, defaultMessage: string): void {
   if (!axios.isAxiosError(error)) {
@@ -83,17 +89,42 @@ export async function generateTelemedicineToken(req: Request, res: Response): Pr
       return;
     }
 
-    const authHeader = req.headers.authorization as string;
-    const appointment = await getAppointmentById(appointmentId, authHeader);
+    if (!isStandaloneMode()) {
+      const authHeader = req.headers.authorization as string;
+      const appointment = await getAppointmentById(appointmentId, authHeader);
 
-    if (!hasAppointmentAccess(req.user!.userId, req.user!.role, appointment)) {
-      res.status(403).json({ error: 'You are not allowed to join this appointment' });
-      return;
-    }
+      if (!hasAppointmentAccess(req.user!.userId, req.user!.role, appointment)) {
+        res.status(403).json({ error: 'You are not allowed to join this appointment' });
+        return;
+      }
 
-    if (appointment.status === 'CANCELLED' || appointment.status === 'REJECTED') {
-      res.status(403).json({ error: `Cannot join a ${appointment.status} appointment` });
-      return;
+      if (appointment.status === 'CANCELLED' || appointment.status === 'REJECTED') {
+        res.status(403).json({ error: `Cannot join a ${appointment.status} appointment` });
+        return;
+      }
+    } else {
+      const session = sessions.get(appointmentId);
+      if (!session || session.status !== 'IN_PROGRESS') {
+        res.status(403).json({ error: 'Session is not active yet' });
+        return;
+      }
+
+      if (req.user!.role === 'doctor') {
+        if (session.doctorId !== req.user!.userId) {
+          res.status(403).json({ error: 'Only the host doctor can join this session as doctor' });
+          return;
+        }
+      }
+
+      if (req.user!.role === 'patient') {
+        if (!session.patientId) {
+          session.patientId = req.user!.userId;
+          sessions.set(appointmentId, session);
+        } else if (session.patientId !== req.user!.userId) {
+          res.status(403).json({ error: 'This session is already assigned to another patient' });
+          return;
+        }
+      }
     }
 
     const agoraToken = buildAgoraToken(appointmentId, req.user!.userId);
@@ -117,15 +148,23 @@ export async function startSession(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const authHeader = req.headers.authorization as string;
-    const appointment = await getAppointmentById(appointmentId, authHeader);
+    if (!isStandaloneMode()) {
+      const authHeader = req.headers.authorization as string;
+      const appointment = await getAppointmentById(appointmentId, authHeader);
 
-    if (appointment.doctorId !== req.user!.userId) {
-      res.status(403).json({ error: 'Only the assigned doctor can start this session' });
-      return;
+      if (appointment.doctorId !== req.user!.userId) {
+        res.status(403).json({ error: 'Only the assigned doctor can start this session' });
+        return;
+      }
+
+      await markAppointmentInProgress(appointmentId);
+    } else {
+      const existing = sessions.get(appointmentId);
+      if (existing && existing.status === 'IN_PROGRESS') {
+        res.status(409).json({ error: 'Session is already in progress' });
+        return;
+      }
     }
-
-    await markAppointmentInProgress(appointmentId);
 
     const startedAt = new Date().toISOString();
     sessions.set(appointmentId, {
@@ -133,6 +172,7 @@ export async function startSession(req: Request, res: Response): Promise<void> {
       channelName: appointmentId,
       status: 'IN_PROGRESS',
       startedAt,
+      doctorId: req.user!.userId,
     });
 
     res.status(200).json({
@@ -152,15 +192,32 @@ export async function endSession(req: Request, res: Response): Promise<void> {
       return;
     }
 
-    const authHeader = req.headers.authorization as string;
-    const appointment = await getAppointmentById(appointmentId, authHeader);
+    let eventPayload: { patientId?: string; doctorId?: string } = {};
+    if (!isStandaloneMode()) {
+      const authHeader = req.headers.authorization as string;
+      const appointment = await getAppointmentById(appointmentId, authHeader);
 
-    if (appointment.doctorId !== req.user!.userId) {
-      res.status(403).json({ error: 'Only the assigned doctor can end this session' });
-      return;
+      if (appointment.doctorId !== req.user!.userId) {
+        res.status(403).json({ error: 'Only the assigned doctor can end this session' });
+        return;
+      }
+
+      await completeAppointmentAsDoctor(appointmentId, authHeader);
+      eventPayload = { patientId: appointment.patientId, doctorId: appointment.doctorId };
+    } else {
+      const existing = sessions.get(appointmentId);
+      if (!existing || existing.status !== 'IN_PROGRESS') {
+        res.status(400).json({ error: 'Session is not in progress' });
+        return;
+      }
+
+      if (existing.doctorId !== req.user!.userId) {
+        res.status(403).json({ error: 'Only the host doctor can end this session' });
+        return;
+      }
+
+      eventPayload = { patientId: existing.patientId, doctorId: existing.doctorId };
     }
-
-    await completeAppointmentAsDoctor(appointmentId, authHeader);
 
     const existingSession = sessions.get(appointmentId);
     const startedAt = existingSession?.startedAt || new Date().toISOString();
@@ -180,8 +237,8 @@ export async function endSession(req: Request, res: Response): Promise<void> {
       await publishNotificationEvent({
         event: 'consultation.completed',
         appointmentId,
-        patientId: appointment.patientId,
-        doctorId: appointment.doctorId,
+        patientId: eventPayload.patientId,
+        doctorId: eventPayload.doctorId,
       });
     } catch (publishError) {
       console.error('[telemedicine-service] Failed to publish consultation.completed', publishError);
@@ -199,23 +256,45 @@ export async function endSession(req: Request, res: Response): Promise<void> {
 export async function getSessionInfo(req: Request, res: Response): Promise<void> {
   try {
     const appointmentId = req.params.appointmentId;
-    const authHeader = req.headers.authorization as string;
+    let appointmentStatus: string | null = null;
 
-    const appointment = await getAppointmentById(appointmentId, authHeader);
-    if (!hasAppointmentAccess(req.user!.userId, req.user!.role, appointment)) {
-      res.status(403).json({ error: 'You are not allowed to access this appointment' });
-      return;
+    if (!isStandaloneMode()) {
+      const authHeader = req.headers.authorization as string;
+      const appointment = await getAppointmentById(appointmentId, authHeader);
+      if (!hasAppointmentAccess(req.user!.userId, req.user!.role, appointment)) {
+        res.status(403).json({ error: 'You are not allowed to access this appointment' });
+        return;
+      }
+
+      appointmentStatus = appointment.status;
     }
 
     const session = sessions.get(appointmentId);
 
     if (!session) {
+      if (isStandaloneMode()) {
+        res.status(404).json({ error: 'Session not found' });
+        return;
+      }
+
       res.status(200).json({
         channelName: appointmentId,
-        status: appointment.status,
+        status: appointmentStatus,
         duration: null,
       });
       return;
+    }
+
+    if (isStandaloneMode()) {
+      if (req.user!.role === 'doctor' && session.doctorId !== req.user!.userId) {
+        res.status(403).json({ error: 'You are not allowed to access this session' });
+        return;
+      }
+
+      if (req.user!.role === 'patient' && session.patientId && session.patientId !== req.user!.userId) {
+        res.status(403).json({ error: 'You are not allowed to access this session' });
+        return;
+      }
     }
 
     res.status(200).json({
