@@ -47,7 +47,7 @@ export async function getDoctors(req: Request, res: Response): Promise<void> {
 export async function getDoctorById(req: Request, res: Response): Promise<void> {
   try {
     const doctor = await Doctor.findById(req.params.id)
-      .select('name specialty bio consultationFee isVerified availableSlots')
+      .select('userId name specialty bio consultationFee isVerified availableSlots')
       .lean();
 
     if (!doctor || !doctor.isVerified) {
@@ -256,20 +256,25 @@ export async function getPatientReports(req: Request, res: Response): Promise<vo
       return;
     }
 
-    const response = await axios.get(`${patientServiceUrl}/api/patients/${patientId}`, {
+    const response = await axios.get(`${patientServiceUrl}/api/patients/internal/${patientId}/reports`, {
       headers: {
         Authorization: req.headers.authorization || '',
       },
       timeout: 8000,
     });
 
-    const reports = response.data?.medicalReports;
+    const reports = response.data?.reports;
     res.status(200).json(Array.isArray(reports) ? reports : []);
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       const statusCode = error.response.status;
       if (statusCode === 404) {
         res.status(404).json({ error: 'Patient not found' });
+        return;
+      }
+
+      if (statusCode === 401 || statusCode === 403) {
+        res.status(403).json({ error: 'Not authorized to access patient reports' });
         return;
       }
     }

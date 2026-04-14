@@ -349,3 +349,26 @@ export async function getPatientByUserId(req: Request, res: Response): Promise<v
     res.status(500).json({ error: 'Internal server error' });
   }
 }
+
+// ── Internal: GET /api/patients/internal/:userId/reports — for Doctor Service ─
+
+export async function getPatientReportsByUserId(req: Request, res: Response): Promise<void> {
+  try {
+    const { userId } = req.params;
+
+    const patient = await Patient.findOne({ userId });
+    if (!patient) {
+      res.status(404).json({ error: 'Patient not found' });
+      return;
+    }
+
+    const reports = await MedicalReport.find({ patientId: patient._id.toString() })
+      .sort({ createdAt: -1 })
+      .limit(20);
+
+    res.status(200).json({ reports });
+  } catch (err) {
+    logger.error(`getPatientReportsByUserId error: ${(err as Error).message}`);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}

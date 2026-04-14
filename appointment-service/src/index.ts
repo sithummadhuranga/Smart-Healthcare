@@ -49,16 +49,19 @@ async function bootstrap(): Promise<void> {
   }
 }
 
-const shutdownSignals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
-for (const signal of shutdownSignals) {
-  process.on(signal, async () => {
-    await closeRabbitConnections();
-    await pool.end();
-    process.exit(0);
-  });
+function registerShutdownHandlers(): void {
+  const shutdownSignals: NodeJS.Signals[] = ['SIGINT', 'SIGTERM'];
+  for (const signal of shutdownSignals) {
+    process.on(signal, async () => {
+      await closeRabbitConnections();
+      await pool.end();
+      process.exit(0);
+    });
+  }
 }
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && require.main === module) {
+  registerShutdownHandlers();
   void bootstrap();
 }
 

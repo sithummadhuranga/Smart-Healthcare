@@ -1,6 +1,9 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import axios from 'axios';
+
+process.env.NODE_ENV = 'test';
+
 import { app } from '../index';
 import { pool } from '../db/pool';
 import { publishNotificationEvent } from '../services/rabbitmqPublisher';
@@ -22,6 +25,16 @@ jest.mock('axios');
 const mockedPoolQuery = pool.query as jest.Mock;
 const mockedAxiosGet = axios.get as jest.Mock;
 const mockedPublish = publishNotificationEvent as jest.Mock;
+
+const APPOINTMENT_IDS = {
+  booking: '11111111-1111-4111-8111-111111111111',
+  modify: '22222222-2222-4222-8222-222222222222',
+  cancel: '33333333-3333-4333-8333-333333333333',
+  completed: '44444444-4444-4444-8444-444444444444',
+  accept: '55555555-5555-4555-8555-555555555555',
+  confirmed: '66666666-6666-4666-8666-666666666666',
+  forbidden: '77777777-7777-4777-8777-777777777777',
+};
 
 function signToken(role: 'patient' | 'doctor' | 'admin', userId: string): string {
   return jwt.sign(
@@ -71,7 +84,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-1',
+            id: APPOINTMENT_IDS.booking,
             patient_id: 'patient-1',
             doctor_id: 'doctor-1',
             slot_id: 'slot-1',
@@ -128,7 +141,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-mod-1',
+            id: APPOINTMENT_IDS.modify,
             patient_id: 'patient-1',
             doctor_id: 'doctor-1',
             slot_id: 'slot-old',
@@ -145,7 +158,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-mod-1',
+            id: APPOINTMENT_IDS.modify,
             patient_id: 'patient-1',
             doctor_id: 'doctor-2',
             slot_id: 'slot-new',
@@ -175,7 +188,7 @@ describe('appointment service booking and transitions', () => {
     });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-mod-1/modify')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.modify}/modify`)
       .set('Authorization', authHeader('patient', 'patient-1'))
       .send({ doctorId: 'doctor-2', slotId: 'slot-new', reason: 'Updated reason' });
 
@@ -190,7 +203,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-2',
+            id: APPOINTMENT_IDS.cancel,
             patient_id: 'patient-1',
             doctor_id: 'doctor-2',
             slot_id: 'slot-2',
@@ -206,7 +219,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-2',
+            id: APPOINTMENT_IDS.cancel,
             patient_id: 'patient-1',
             doctor_id: 'doctor-2',
             slot_id: 'slot-2',
@@ -221,7 +234,7 @@ describe('appointment service booking and transitions', () => {
       });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-2/cancel')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.cancel}/cancel`)
       .set('Authorization', authHeader('patient', 'patient-1'));
 
     expect(res.status).toBe(200);
@@ -232,7 +245,7 @@ describe('appointment service booking and transitions', () => {
     mockedPoolQuery.mockResolvedValueOnce({
       rows: [
         {
-          id: 'apt-3',
+          id: APPOINTMENT_IDS.completed,
           patient_id: 'patient-1',
           doctor_id: 'doctor-2',
           slot_id: 'slot-2',
@@ -247,7 +260,7 @@ describe('appointment service booking and transitions', () => {
     });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-3/cancel')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.completed}/cancel`)
       .set('Authorization', authHeader('patient', 'patient-1'));
 
     expect(res.status).toBe(400);
@@ -259,7 +272,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-4',
+            id: APPOINTMENT_IDS.accept,
             patient_id: 'patient-1',
             doctor_id: 'doctor-2',
             slot_id: 'slot-2',
@@ -275,7 +288,7 @@ describe('appointment service booking and transitions', () => {
       .mockResolvedValueOnce({
         rows: [
           {
-            id: 'apt-4',
+            id: APPOINTMENT_IDS.accept,
             patient_id: 'patient-1',
             doctor_id: 'doctor-2',
             slot_id: 'slot-2',
@@ -290,7 +303,7 @@ describe('appointment service booking and transitions', () => {
       });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-4/accept')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.accept}/accept`)
       .set('Authorization', authHeader('doctor', 'doctor-2'));
 
     expect(res.status).toBe(200);
@@ -301,7 +314,7 @@ describe('appointment service booking and transitions', () => {
     mockedPoolQuery.mockResolvedValueOnce({
       rows: [
         {
-          id: 'apt-5',
+          id: APPOINTMENT_IDS.confirmed,
           patient_id: 'patient-1',
           doctor_id: 'doctor-2',
           slot_id: 'slot-2',
@@ -316,7 +329,7 @@ describe('appointment service booking and transitions', () => {
     });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-5/accept')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.confirmed}/accept`)
       .set('Authorization', authHeader('doctor', 'doctor-2'));
 
     expect(res.status).toBe(400);
@@ -327,7 +340,7 @@ describe('appointment service booking and transitions', () => {
     mockedPoolQuery.mockResolvedValueOnce({
       rows: [
         {
-          id: 'apt-6',
+          id: APPOINTMENT_IDS.forbidden,
           patient_id: 'patient-1',
           doctor_id: 'doctor-2',
           slot_id: 'slot-2',
@@ -342,7 +355,7 @@ describe('appointment service booking and transitions', () => {
     });
 
     const res = await request(app)
-      .patch('/api/appointments/apt-6/cancel')
+      .patch(`/api/appointments/${APPOINTMENT_IDS.forbidden}/cancel`)
       .set('Authorization', authHeader('patient', 'patient-99'));
 
     expect(res.status).toBe(403);

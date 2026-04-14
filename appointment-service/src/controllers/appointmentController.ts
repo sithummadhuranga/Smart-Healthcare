@@ -35,9 +35,32 @@ interface DoctorSlot {
 
 interface DoctorData {
   _id: string;
+  userId?: string;
   name: string;
   specialty?: string;
   availableSlots?: DoctorSlot[];
+}
+
+interface PgError extends Error {
+  code?: string;
+}
+
+const APPOINTMENT_STATUS_VALUES: AppointmentStatus[] = [
+  'PENDING',
+  'CONFIRMED',
+  'PAID',
+  'IN_PROGRESS',
+  'COMPLETED',
+  'CANCELLED',
+  'REJECTED',
+];
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (error as PgError)?.code === '23505';
 }
 
 function mapRow(row: AppointmentRow) {
@@ -56,6 +79,11 @@ function mapRow(row: AppointmentRow) {
 }
 
 async function getAppointmentOr404(id: string, res: Response): Promise<AppointmentRow | null> {
+  if (!isUuid(id)) {
+    res.status(400).json({ error: 'Invalid appointment id format' });
+    return null;
+  }
+
   const result = await pool.query<AppointmentRow>('SELECT * FROM appointments WHERE id = $1', [id]);
 
   if (!result.rows[0]) {
@@ -83,7 +111,7 @@ function canTransition(current: AppointmentStatus, next: AppointmentStatus): boo
 function combineScheduledAt(date: string, startTime: string): string {
   const [hours, minutes] = startTime.split(':').map(Number);
   const d = new Date(date);
-  d.setHours(hours || 0, minutes || 0, 0, 0);
+  d.setUTCHours(hours || 0, minutes || 0, 0, 0);
   return d.toISOString();
 }
 
@@ -151,13 +179,23 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
     }
 
     const scheduledAt = combineScheduledAt(slot.date, slot.startTime);
+    const doctorOwnerId = doctor.userId || doctorId;
 
-    const inserted = await pool.query<AppointmentRow>(
-      `INSERT INTO appointments (patient_id, doctor_id, slot_id, reason, status, scheduled_at)
-       VALUES ($1, $2, $3, $4, 'PENDING', $5)
-       RETURNING *`,
-      [req.user!.userId, doctorId, slotId, reason || null, scheduledAt]
-    );
+    let inserted;
+    try {
+      inserted = await pool.query<AppointmentRow>(
+        `INSERT INTO appointments (patient_id, doctor_id, slot_id, reason, status, scheduled_at)
+         VALUES ($1, $2, $3, $4, 'PENDING', $5)
+         RETURNING *`,
+        [req.user!.userId, doctorOwnerId, slotId, reason || null, scheduledAt]
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: 'This slot is already booked' });
+        return;
+      }
+      throw error;
+    }
 
     const appointment = inserted.rows[0];
 
@@ -247,19 +285,29 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
     }
 
     const scheduledAt = combineScheduledAt(slot.date, slot.startTime);
-    const updated = await pool.query<AppointmentRow>(
-      `UPDATE appointments
-       SET doctor_id = $2,
-           slot_id = $3,
-           reason = $4,
-           scheduled_at = $5,
-           status = 'PENDING',
-           rejection_reason = NULL,
-           updated_at = NOW()
-       WHERE id = $1
-       RETURNING *`,
-      [appointment.id, doctorId, slotId, reason ?? appointment.reason, scheduledAt]
-    );
+    const doctorOwnerId = doctor.userId || doctorId;
+    let updated;
+    try {
+      updated = await pool.query<AppointmentRow>(
+        `UPDATE appointments
+         SET doctor_id = $2,
+             slot_id = $3,
+             reason = $4,
+             scheduled_at = $5,
+             status = 'PENDING',
+             rejection_reason = NULL,
+             updated_at = NOW()
+         WHERE id = $1
+         RETURNING *`,
+        [appointment.id, doctorOwnerId, slotId, reason ?? appointment.reason, scheduledAt]
+      );
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        res.status(409).json({ error: 'This slot is already booked' });
+        return;
+      }
+      throw error;
+    }
 
     res.status(200).json(mapRow(updated.rows[0]));
   } catch (error) {
@@ -270,6 +318,11 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
 export async function getAppointments(req: Request, res: Response): Promise<void> {
   try {
     const status = (req.query.status as string | undefined)?.toUpperCase();
+    if (status && !APPOINTMENT_STATUS_VALUES.includes(status as AppointmentStatus)) {
+      res.status(400).json({ error: 'Invalid status filter' });
+      return;
+    }
+
     const values: string[] = [];
 
     let query = 'SELECT * FROM appointments WHERE ';
@@ -485,9 +538,16 @@ export async function completeAppointment(req: Request, res: Response): Promise<
 
 export async function getAllAppointmentsAdmin(req: Request, res: Response): Promise<void> {
   try {
-    const page = Number(req.query.page || 1);
-    const limit = Number(req.query.limit || 10);
+    const pageRaw = parseInt(String(req.query.page || '1'), 10);
+    const limitRaw = parseInt(String(req.query.limit || '10'), 10);
+    const page = Number.isFinite(pageRaw) ? Math.max(1, pageRaw) : 1;
+    const limit = Number.isFinite(limitRaw) ? Math.min(100, Math.max(1, limitRaw)) : 10;
     const status = (req.query.status as string | undefined)?.toUpperCase();
+
+    if (status && !APPOINTMENT_STATUS_VALUES.includes(status as AppointmentStatus)) {
+      res.status(400).json({ error: 'Invalid status filter' });
+      return;
+    }
 
     const where = status ? 'WHERE status = $1' : '';
     const values: Array<string | number> = [];

@@ -155,8 +155,6 @@ const options: swaggerJsdoc.Options = {
           description: 'Returns verified doctors. Filterable by specialty. No authentication required.',
           parameters: [
             { in: 'query', name: 'specialty', schema: { type: 'string' }, description: 'Filter by medical specialty' },
-            { in: 'query', name: 'page', schema: { type: 'integer', default: 1 } },
-            { in: 'query', name: 'limit', schema: { type: 'integer', default: 20 } },
           ],
           responses: {
             '200': {
