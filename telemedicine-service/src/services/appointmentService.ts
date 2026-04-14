@@ -22,7 +22,7 @@ export interface AppointmentRecord {
   updatedAt: string;
 }
 
-const APPOINTMENT_SERVICE_URL =
+const getAppointmentServiceUrl = (): string =>
   process.env.APPOINTMENT_SERVICE_URL || 'http://appointment-service:3004';
 
 function buildInternalHeaders(): Record<string, string> {
@@ -40,8 +40,9 @@ export async function getAppointmentById(
   appointmentId: string,
   authHeader: string
 ): Promise<AppointmentRecord> {
+  const appointmentServiceUrl = getAppointmentServiceUrl();
   const response = await axios.get<AppointmentRecord>(
-    `${APPOINTMENT_SERVICE_URL}/api/appointments/${appointmentId}`,
+    `${appointmentServiceUrl}/api/appointments/${appointmentId}`,
     {
       headers: {
         Authorization: authHeader,
@@ -54,8 +55,9 @@ export async function getAppointmentById(
 }
 
 export async function markAppointmentInProgress(appointmentId: string): Promise<AppointmentRecord> {
+  const appointmentServiceUrl = getAppointmentServiceUrl();
   const response = await axios.patch<AppointmentRecord>(
-    `${APPOINTMENT_SERVICE_URL}/api/appointments/${appointmentId}/start`,
+    `${appointmentServiceUrl}/api/appointments/${appointmentId}/start`,
     {},
     {
       headers: buildInternalHeaders(),
@@ -70,8 +72,9 @@ export async function completeAppointmentAsDoctor(
   appointmentId: string,
   authHeader: string
 ): Promise<AppointmentRecord> {
+  const appointmentServiceUrl = getAppointmentServiceUrl();
   const response = await axios.patch<AppointmentRecord>(
-    `${APPOINTMENT_SERVICE_URL}/api/appointments/${appointmentId}/complete`,
+    `${appointmentServiceUrl}/api/appointments/${appointmentId}/complete`,
     {},
     {
       headers: {

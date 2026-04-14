@@ -32,14 +32,26 @@ const options: swaggerJsdoc.Options = {
         Payment: {
           type: 'object',
           properties: {
-            id: { type: 'integer' },
-            appointmentId: { type: 'integer' },
+            id: { type: 'string' },
+            appointmentId: { type: 'string' },
             patientId: { type: 'string' },
             amount: { type: 'number', example: 25.00 },
             currency: { type: 'string', example: 'usd' },
-            status: { type: 'string', enum: ['pending', 'succeeded', 'failed', 'refunded'] },
+            status: { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED'] },
+            transactionId: { type: 'string', nullable: true },
             stripePaymentIntentId: { type: 'string' },
+            stripeChargeId: { type: 'string', nullable: true },
             createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        PaymentByAppointmentResponse: {
+          type: 'object',
+          properties: {
+            status: { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED'] },
+            transactionId: { type: 'string', nullable: true },
+            amount: { type: 'number' },
+            currency: { type: 'string' },
+            payment: { $ref: '#/components/schemas/Payment' },
           },
         },
         ErrorResponse: {
@@ -69,32 +81,51 @@ const options: swaggerJsdoc.Options = {
           security: [{ BearerAuth: [] }],
           requestBody: {
             required: true,
-            content: { 'application/json': { schema: { type: 'object', required: ['appointmentId'], properties: { appointmentId: { type: 'integer' } } } } },
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['appointmentId'],
+                  properties: { appointmentId: { type: 'string' } },
+                },
+              },
+            },
           },
           responses: {
             '201': { description: 'PaymentIntent created', content: { 'application/json': { schema: { '$ref': '#/components/schemas/PaymentIntent' } } } },
             '400': { description: 'Missing appointmentId' },
             '401': { description: 'Unauthenticated' },
+            '403': { description: 'Appointment does not belong to patient' },
+            '404': { description: 'Doctor not found for appointment' },
+            '503': { description: 'Dependency unavailable' },
           },
         },
       },
-      '/api/payments': {
+      '/api/payments/{appointmentId}': {
         get: {
           tags: ['Payments'],
-          summary: 'Get payment history for current patient',
+          summary: 'Get payment details for an appointment',
           security: [{ BearerAuth: [] }],
+          parameters: [{ in: 'path', name: 'appointmentId', required: true, schema: { type: 'string' } }],
           responses: {
-            '200': { description: 'Payment list', content: { 'application/json': { schema: { type: 'array', items: { '$ref': '#/components/schemas/Payment' } } } } },
+            '200': {
+              description: 'Payment record',
+              content: { 'application/json': { schema: { '$ref': '#/components/schemas/PaymentByAppointmentResponse' } } },
+            },
+            '404': { description: 'Payment not found' },
           },
         },
       },
-      '/api/payments/{id}': {
+      '/api/payments/admin/all': {
         get: {
           tags: ['Payments'],
-          summary: 'Get payment by ID',
+          summary: 'Get all payments (admin)',
           security: [{ BearerAuth: [] }],
-          parameters: [{ in: 'path', name: 'id', required: true, schema: { type: 'integer' } }],
-          responses: { '200': { description: 'Payment record' }, '404': { description: 'Not found' } },
+          parameters: [
+            { in: 'query', name: 'page', required: false, schema: { type: 'integer', default: 1 } },
+            { in: 'query', name: 'limit', required: false, schema: { type: 'integer', default: 20 } },
+          ],
+          responses: { '200': { description: 'Paginated payment list' } },
         },
       },
       '/api/payments/webhook': {
@@ -104,7 +135,7 @@ const options: swaggerJsdoc.Options = {
           description:
             'Receives Stripe webhook events. Must receive the raw request body (not JSON-parsed) for ' +
             'signature verification. Configure this URL in your Stripe Dashboard. Publishes ' +
-            'payment.succeeded events to RabbitMQ for the Notification Service.',
+            'payment.confirmed events to RabbitMQ for the Notification Service.',
           requestBody: { required: true, content: { 'application/json': { schema: { type: 'object' } } } },
           responses: { '200': { description: 'Event received' }, '400': { description: 'Invalid signature' } },
         },

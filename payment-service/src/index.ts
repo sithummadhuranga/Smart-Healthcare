@@ -6,7 +6,7 @@ import { swaggerSpec } from './swagger';
 import paymentRoutes from './routes/paymentRoutes';
 import { handleWebhook } from './controllers/paymentController';
 import { initializeDatabase } from './db/pool';
-import { initializeRabbitMQ } from './services/rabbitmqPublisher';
+import { closeRabbitMQ, initializeRabbitMQ } from './services/rabbitmqPublisher';
 
 const app = express();
 const PORT = Number(process.env.PAYMENT_SERVICE_PORT) || 3006;
@@ -45,9 +45,25 @@ const start = async (): Promise<void> => {
     await initializeDatabase();
     void initializeRabbitMQ();
 
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);
       console.log(`[${SERVICE_NAME}] API docs available at http://localhost:${PORT}/api-docs`);
+    });
+
+    const shutdown = async (signal: string): Promise<void> => {
+      console.log(`[${SERVICE_NAME}] Received ${signal}. Shutting down...`);
+      await closeRabbitMQ();
+      server.close(() => {
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGINT', () => {
+      void shutdown('SIGINT');
+    });
+
+    process.on('SIGTERM', () => {
+      void shutdown('SIGTERM');
     });
   } catch (error) {
     console.error(`[${SERVICE_NAME}] Failed to start`, error);

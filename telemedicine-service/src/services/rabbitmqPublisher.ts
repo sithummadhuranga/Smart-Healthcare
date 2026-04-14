@@ -1,18 +1,35 @@
-import amqp, { Channel, ChannelModel } from 'amqplib';
+import amqp from 'amqplib';
 
-let connection: ChannelModel | null = null;
-let channel: Channel | null = null;
+type ConnectedConnection = Awaited<ReturnType<typeof amqp.connect>>;
+type ConnectedChannel = Awaited<ReturnType<ConnectedConnection['createChannel']>>;
+
+let connection: ConnectedConnection | null = null;
+let channel: ConnectedChannel | null = null;
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://rabbitmq:5672';
 const QUEUE_NAME = 'notifications';
 
-async function getChannel(): Promise<Channel> {
+async function getChannel(): Promise<ConnectedChannel> {
   if (channel !== null) {
     return channel;
   }
 
-  connection = await amqp.connect(RABBITMQ_URL);
-  channel = await connection.createChannel();
+  const conn = await amqp.connect(RABBITMQ_URL);
+  const ch = await conn.createChannel();
+
+  connection = conn;
+  channel = ch;
+
+  connection.on('close', () => {
+    channel = null;
+    connection = null;
+  });
+
+  connection.on('error', () => {
+    channel = null;
+    connection = null;
+  });
+
   await channel.assertQueue(QUEUE_NAME, { durable: true });
   return channel;
 }

@@ -87,6 +87,7 @@ const formatPayment = (row: PaymentRow) => ({
   amount: getNumericValue(row.amount),
   currency: row.currency || DEFAULT_CURRENCY,
   status: row.status,
+  transactionId: row.stripe_charge_id || row.stripe_payment_intent_id,
   stripePaymentIntentId: row.stripe_payment_intent_id,
   stripeChargeId: row.stripe_charge_id,
   createdAt: row.created_at,
@@ -313,6 +314,11 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
       return;
     }
 
+    if (error instanceof Error && error.message === 'DOCTOR_NOT_FOUND') {
+      res.status(404).json({ error: 'Doctor not found for this appointment' });
+      return;
+    }
+
     const status = error instanceof Error ? (error as Error & { status?: number }).status : undefined;
     if (typeof status === 'number') {
       const message = error instanceof Error ? error.message : 'Request failed';
@@ -378,7 +384,7 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
 
       const updateResult = await pool.query<PaymentRow>(
         `UPDATE payments
-         SET status = 'SUCCEEDED',
+         SET status = 'COMPLETED',
              stripe_charge_id = $1,
              updated_at = NOW()
          WHERE stripe_payment_intent_id = $2
@@ -397,9 +403,9 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
             stripe_charge_id,
             status
           )
-          VALUES ($1, $2, $3, $4, $5, $6, 'SUCCEEDED')
+          VALUES ($1, $2, $3, $4, $5, $6, 'COMPLETED')
           ON CONFLICT (stripe_payment_intent_id) DO UPDATE
-          SET status = 'SUCCEEDED',
+          SET status = 'COMPLETED',
               stripe_charge_id = EXCLUDED.stripe_charge_id,
               updated_at = NOW()`,
           [
@@ -415,13 +421,18 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
 
       try {
         const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
+        const internalApiKey = process.env.INTERNAL_SERVICE_API_KEY;
+
+        if (!internalApiKey) {
+          throw new Error('INTERNAL_SERVICE_API_KEY is required for internal appointment updates');
+        }
 
         await axios.patch(
           `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}/pay`,
           {},
           {
             headers: {
-              'x-service-secret': 'internal',
+              'x-internal-api-key': internalApiKey,
             },
             timeout: 5_000,
           }
@@ -497,7 +508,15 @@ export const getPaymentByAppointment = async (req: AuthenticatedRequest, res: Re
       return;
     }
 
-    res.status(200).json(formatPayment(payment));
+    const formatted = formatPayment(payment);
+
+    res.status(200).json({
+      status: formatted.status,
+      transactionId: formatted.transactionId,
+      amount: formatted.amount,
+      currency: formatted.currency,
+      payment: formatted,
+    });
   } catch (error) {
     console.error('[payment-service] getPaymentByAppointment failed', error);
     res.status(500).json({ error: 'Failed to fetch payment' });

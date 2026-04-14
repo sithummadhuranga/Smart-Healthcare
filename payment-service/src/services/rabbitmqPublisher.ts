@@ -130,6 +130,7 @@ export const publishEvent = async (eventType: string, data: Record<string, unkno
 
     const payload = {
       type: eventType,
+      event: eventType,
       ...data,
       timestamp: new Date().toISOString(),
     };
