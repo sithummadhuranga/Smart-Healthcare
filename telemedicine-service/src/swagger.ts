@@ -23,9 +23,18 @@ const options: swaggerJsdoc.Options = {
           type: 'object',
           properties: {
             token: { type: 'string', description: 'Agora RTC token for joining the video channel' },
-            channelName: { type: 'string', example: 'appointment-456' },
-            uid: { type: 'integer', description: 'Agora user ID' },
+            channelName: { type: 'string', example: 'd290f1ee-6c54-4b01-90e6-d701748f0851' },
+            uid: { type: 'string', description: 'Agora user account id (authenticated userId)' },
+            appId: { type: 'string' },
             expiresAt: { type: 'integer', description: 'Unix timestamp when token expires' },
+          },
+        },
+        SessionResponse: {
+          type: 'object',
+          properties: {
+            channelName: { type: 'string' },
+            status: { type: 'string' },
+            duration: { type: 'string', nullable: true },
           },
         },
         ErrorResponse: {
@@ -62,7 +71,7 @@ const options: swaggerJsdoc.Options = {
                   type: 'object',
                   required: ['appointmentId'],
                   properties: {
-                    appointmentId: { type: 'integer', example: 42 },
+                    appointmentId: { type: 'string', example: 'd290f1ee-6c54-4b01-90e6-d701748f0851' },
                   },
                 },
               },
@@ -79,14 +88,69 @@ const options: swaggerJsdoc.Options = {
           },
         },
       },
-      '/api/telemedicine/session/{appointmentId}': {
+      '/api/telemedicine/start': {
+        post: {
+          tags: ['Telemedicine'],
+          summary: 'Start telemedicine session (doctor only)',
+          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['appointmentId'],
+                  properties: {
+                    appointmentId: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Session started' },
+            '400': { description: 'Invalid appointment state' },
+            '403': { description: 'Only assigned doctor can start session' },
+          },
+        },
+      },
+      '/api/telemedicine/end': {
+        post: {
+          tags: ['Telemedicine'],
+          summary: 'End telemedicine session (doctor only)',
+          security: [{ BearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  required: ['appointmentId'],
+                  properties: {
+                    appointmentId: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': { description: 'Session ended' },
+            '400': { description: 'Invalid appointment state' },
+            '403': { description: 'Only assigned doctor can end session' },
+          },
+        },
+      },
+      '/api/telemedicine/{appointmentId}': {
         get: {
           tags: ['Telemedicine'],
           summary: 'Get session details for an appointment',
           security: [{ BearerAuth: [] }],
-          parameters: [{ in: 'path', name: 'appointmentId', required: true, schema: { type: 'integer' } }],
+          parameters: [{ in: 'path', name: 'appointmentId', required: true, schema: { type: 'string' } }],
           responses: {
-            '200': { description: 'Session info including channel name and Agora App ID' },
+            '200': {
+              description: 'Session info including channel name and session status',
+              content: { 'application/json': { schema: { '$ref': '#/components/schemas/SessionResponse' } } },
+            },
             '404': { description: 'No session for this appointment' },
           },
         },
