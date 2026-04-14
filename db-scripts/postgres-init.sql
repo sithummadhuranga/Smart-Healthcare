@@ -36,6 +36,9 @@ CREATE INDEX IF NOT EXISTS idx_app_patient   ON appointments (patient_id);
 CREATE INDEX IF NOT EXISTS idx_app_doctor    ON appointments (doctor_id);
 CREATE INDEX IF NOT EXISTS idx_app_status    ON appointments (status);
 CREATE INDEX IF NOT EXISTS idx_app_slot      ON appointments (doctor_id, slot_id);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_active_doctor_slot
+    ON appointments (doctor_id, slot_id)
+    WHERE status NOT IN ('CANCELLED', 'REJECTED');
 
 -- Trigger: keep updated_at current on every update
 CREATE OR REPLACE FUNCTION update_updated_at_column()
