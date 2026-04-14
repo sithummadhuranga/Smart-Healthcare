@@ -4,6 +4,7 @@ import {
   cancelAppointment,
   completeAppointment,
   createAppointment,
+  modifyAppointment,
   getAllAppointmentsAdmin,
   getAppointmentById,
   getAppointments,
@@ -24,6 +25,7 @@ router.get('/', verifyToken, requireRole('patient', 'doctor'), getAppointments);
 router.get('/admin/all', verifyToken, requireRole('admin'), getAllAppointmentsAdmin);
 router.get('/:id', verifyToken, requireRole('patient', 'doctor', 'admin'), getAppointmentById);
 router.post('/', verifyToken, requireRole('patient'), createAppointment);
+router.patch('/:id/modify', verifyToken, requireRole('patient'), modifyAppointment);
 router.patch('/:id/cancel', verifyToken, requireRole('patient'), cancelAppointment);
 router.patch('/:id/accept', verifyToken, requireRole('doctor'), acceptAppointment);
 router.patch('/:id/reject', verifyToken, requireRole('doctor'), rejectAppointment);

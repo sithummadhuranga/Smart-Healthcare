@@ -180,6 +180,93 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
   }
 }
 
+export async function modifyAppointment(req: Request, res: Response): Promise<void> {
+  try {
+    const appointment = await getAppointmentOr404(req.params.id, res);
+    if (!appointment) {
+      return;
+    }
+
+    if (appointment.patient_id !== req.user!.userId) {
+      res.status(403).json({ error: 'You can only modify your own appointments' });
+      return;
+    }
+
+    if (!['PENDING', 'CONFIRMED'].includes(appointment.status)) {
+      res.status(400).json({ error: `Cannot modify appointment from status ${appointment.status}` });
+      return;
+    }
+
+    const { doctorId, slotId, reason } = req.body as {
+      doctorId?: string;
+      slotId?: string;
+      reason?: string;
+    };
+
+    if (!doctorId || !slotId) {
+      res.status(400).json({ error: 'doctorId and slotId are required' });
+      return;
+    }
+
+    let doctor: DoctorData;
+    try {
+      doctor = await getDoctorData(doctorId);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        res.status(404).json({ error: 'Doctor not found or not verified' });
+        return;
+      }
+      res.status(502).json({ error: 'Failed to validate doctor/slot with doctor-service' });
+      return;
+    }
+
+    const slot = doctor.availableSlots?.find((s) => s.slotId === slotId);
+    if (!slot) {
+      res.status(400).json({ error: 'Invalid slotId for selected doctor' });
+      return;
+    }
+
+    if (slot.isBooked) {
+      res.status(409).json({ error: 'This slot is already booked' });
+      return;
+    }
+
+    const conflict = await pool.query(
+      `SELECT id FROM appointments
+       WHERE doctor_id = $1
+         AND slot_id = $2
+         AND id <> $3
+         AND status NOT IN ('CANCELLED', 'REJECTED')
+       LIMIT 1`,
+      [doctorId, slotId, appointment.id]
+    );
+
+    if (conflict.rows.length > 0) {
+      res.status(409).json({ error: 'This slot is already booked' });
+      return;
+    }
+
+    const scheduledAt = combineScheduledAt(slot.date, slot.startTime);
+    const updated = await pool.query<AppointmentRow>(
+      `UPDATE appointments
+       SET doctor_id = $2,
+           slot_id = $3,
+           reason = $4,
+           scheduled_at = $5,
+           status = 'PENDING',
+           rejection_reason = NULL,
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [appointment.id, doctorId, slotId, reason ?? appointment.reason, scheduledAt]
+    );
+
+    res.status(200).json(mapRow(updated.rows[0]));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to modify appointment' });
+  }
+}
+
 export async function getAppointments(req: Request, res: Response): Promise<void> {
   try {
     const status = (req.query.status as string | undefined)?.toUpperCase();

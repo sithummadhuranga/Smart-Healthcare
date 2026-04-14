@@ -123,6 +123,68 @@ describe('appointment service booking and transitions', () => {
     expect(res.body.error).toContain('already booked');
   });
 
+  it('modifies an appointment by patient and resets status to PENDING', async () => {
+    mockedPoolQuery
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'apt-mod-1',
+            patient_id: 'patient-1',
+            doctor_id: 'doctor-1',
+            slot_id: 'slot-old',
+            reason: 'Old reason',
+            status: 'CONFIRMED',
+            rejection_reason: null,
+            scheduled_at: '2026-05-10T08:00:00.000Z',
+            created_at: '2026-05-01T10:00:00.000Z',
+            updated_at: '2026-05-01T10:00:00.000Z',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            id: 'apt-mod-1',
+            patient_id: 'patient-1',
+            doctor_id: 'doctor-2',
+            slot_id: 'slot-new',
+            reason: 'Updated reason',
+            status: 'PENDING',
+            rejection_reason: null,
+            scheduled_at: '2026-05-11T10:00:00.000Z',
+            created_at: '2026-05-01T10:00:00.000Z',
+            updated_at: '2026-05-01T10:10:00.000Z',
+          },
+        ],
+      });
+
+    mockedAxiosGet.mockResolvedValueOnce({
+      data: {
+        _id: 'doctor-2',
+        availableSlots: [
+          {
+            slotId: 'slot-new',
+            date: '2026-05-11T00:00:00.000Z',
+            startTime: '10:00',
+            endTime: '10:30',
+            isBooked: false,
+          },
+        ],
+      },
+    });
+
+    const res = await request(app)
+      .patch('/api/appointments/apt-mod-1/modify')
+      .set('Authorization', authHeader('patient', 'patient-1'))
+      .send({ doctorId: 'doctor-2', slotId: 'slot-new', reason: 'Updated reason' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.status).toBe('PENDING');
+    expect(res.body.doctorId).toBe('doctor-2');
+    expect(res.body.slotId).toBe('slot-new');
+  });
+
   it('cancels a patient own pending appointment', async () => {
     mockedPoolQuery
       .mockResolvedValueOnce({
