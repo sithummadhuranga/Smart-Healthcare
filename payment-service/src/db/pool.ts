@@ -65,6 +65,7 @@ const schemaStatements = [
     patient_id VARCHAR NOT NULL,
     amount NUMERIC(10,2) NOT NULL,
     currency VARCHAR DEFAULT 'usd',
+    payment_method VARCHAR,
     stripe_payment_intent_id VARCHAR UNIQUE,
     stripe_charge_id VARCHAR,
     status VARCHAR DEFAULT 'PENDING',
@@ -80,6 +81,9 @@ const schemaStatements = [
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
   );`,
+  'ALTER TABLE payments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
+  'ALTER TABLE payments ADD COLUMN IF NOT EXISTS payment_method VARCHAR;',
+  'ALTER TABLE payment_webhook_events ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();',
   'CREATE INDEX IF NOT EXISTS idx_payments_appointment_id_created_at ON payments (appointment_id, created_at DESC);',
   'CREATE INDEX IF NOT EXISTS idx_payments_patient_id_created_at ON payments (patient_id, created_at DESC);',
   "CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_pending_appointment ON payments (appointment_id) WHERE status = 'PENDING';",

@@ -27,6 +27,7 @@ const options: swaggerJsdoc.Options = {
             paymentIntentId: { type: 'string' },
             amount: { type: 'integer', description: 'Amount in smallest currency unit (cents)' },
             currency: { type: 'string', example: 'usd' },
+            paymentMethod: { type: 'string', nullable: true, example: 'card' },
           },
         },
         Payment: {
@@ -37,6 +38,7 @@ const options: swaggerJsdoc.Options = {
             patientId: { type: 'string' },
             amount: { type: 'number', example: 25.00 },
             currency: { type: 'string', example: 'usd' },
+            paymentMethod: { type: 'string', nullable: true, example: 'card' },
             status: { type: 'string', enum: ['PENDING', 'COMPLETED', 'FAILED'] },
             transactionId: { type: 'string', nullable: true },
             stripePaymentIntentId: { type: 'string' },

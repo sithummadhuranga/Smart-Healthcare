@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS payments (
     patient_id                VARCHAR       NOT NULL,
     amount                    NUMERIC(10,2) NOT NULL,
     currency                  VARCHAR(3)    NOT NULL DEFAULT 'USD',
+    payment_method            VARCHAR,
     stripe_payment_intent_id  VARCHAR,
     stripe_charge_id          VARCHAR,
     status                    VARCHAR(20)   NOT NULL DEFAULT 'PENDING',

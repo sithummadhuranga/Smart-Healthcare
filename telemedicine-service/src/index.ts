@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import express, { Request, Response } from 'express';
+import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
@@ -26,6 +26,15 @@ app.get('/health', (_req: Request, res: Response) => {
 });
 
 app.use('/api/telemedicine', telemedicineRoutes);
+
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  if (err instanceof SyntaxError && 'body' in (err as object)) {
+    res.status(400).json({ error: 'Invalid JSON payload' });
+    return;
+  }
+
+  next(err);
+});
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });
