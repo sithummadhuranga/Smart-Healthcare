@@ -21,6 +21,7 @@ data:
   PAYMENT_SERVICE_PORT: "3006"
   NOTIFICATION_SERVICE_PORT: "3007"
   AI_SERVICE_PORT: "8000"
+  TELEMEDICINE_STANDALONE_MODE: "false"
 
   # ── Upstream service URLs (container-name DNS within cluster) ─
   AUTH_SERVICE_URL: "http://auth-service:3001"
@@ -32,15 +33,13 @@ data:
   NOTIFICATION_SERVICE_URL: "http://notification-service:3007"
   AI_SERVICE_URL: "http://ai-symptom-service:8000"
 
-  # ── Database URIs (credentials come from Secret) ──────────
-  AUTH_MONGODB_URI: "mongodb://mongodb:27017/authdb"
-  MONGODB_URI: "mongodb://mongodb:27017/patientdb"
-  DOCTOR_MONGODB_URI: "mongodb://mongodb:27017/doctordb"
-  APPOINTMENT_DB_URL: "postgresql://postgres:postgres@postgres:5432/appointmentdb"
-  PAYMENT_DB_URL: "postgresql://postgres:postgres@postgres:5432/paymentdb"
-
-  # ── Message queue ─────────────────────────────────────────
-  RABBITMQ_URL: "amqp://guest:guest@rabbitmq:5672"
+  # ── Database and queue hosts (full URLs come from Secret) ──────────
+  MONGODB_HOST: "mongodb"
+  MONGODB_PORT: "27017"
+  POSTGRES_HOST: "postgres"
+  POSTGRES_PORT: "5432"
+  RABBITMQ_HOST: "rabbitmq"
+  RABBITMQ_PORT: "5672"
 
   # ── CORS allowed origins ──────────────────────────────────
   CORS_ORIGIN: "http://healthcare.local,http://localhost"
@@ -49,7 +48,7 @@ data:
   JWT_EXPIRY: "15m"
   JWT_REFRESH_EXPIRY: "7d"
 
-  # ── Notification ──────────────────────────────────────────
+  # ── Notification / mail defaults ─────────────────────────
   FROM_EMAIL: "noreply@healthcare.local"
 
   # ── Node environment ─────────────────────────────────────

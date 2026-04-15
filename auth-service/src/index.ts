@@ -9,6 +9,7 @@ import swaggerUi from 'swagger-ui-express';
 import authRoutes from './routes/authRoutes';
 import { swaggerSpec } from './swagger';
 import logger from './logger';
+import { runSeeders } from './seeders';
 
 const app = express();
 const PORT = Number(process.env.AUTH_SERVICE_PORT) || 3001;
@@ -106,6 +107,7 @@ async function start(): Promise<void> {
       serverSelectionTimeoutMS: 5000,
     });
     logger.info(`[${SERVICE_NAME}] MongoDB connected`);
+    await runSeeders();
 
     app.listen(PORT, () => {
       logger.info(`[${SERVICE_NAME}] Running on port ${PORT}`);
@@ -122,4 +124,8 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-start();
+if (process.env.NODE_ENV !== 'test') {
+  void start();
+}
+
+export { app };

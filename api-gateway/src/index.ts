@@ -92,12 +92,16 @@ app.get('/api-docs', (_req: Request, res: Response) => {
     },
     services: {
       auth: {
+        gatewayUrl: '/api-docs/auth',
+        gatewayJson: '/api-docs/auth.json',
         internalUrl: `${internal.auth}/api-docs`,
         internalJson: `${internal.auth}/api-docs.json`,
         hostUrl: 'http://127.0.0.1:3001/api-docs',
         hostJson: 'http://127.0.0.1:3001/api-docs.json',
       },
       patient: {
+        gatewayUrl: '/api-docs/patient',
+        gatewayJson: '/api-docs/patient.json',
         internalUrl: `${internal.patient}/api-docs`,
         internalJson: `${internal.patient}/api-docs.json`,
         hostUrl: 'http://127.0.0.1:3002/api-docs',
@@ -143,6 +147,67 @@ app.get('/api-docs', (_req: Request, res: Response) => {
   };
   res.status(200).json(docs);
 });
+
+// ── Gateway Swagger passthrough for Member 1 services ───────────────────────
+app.use(
+  '/api-docs/auth',
+  createProxyMiddleware({
+    target: process.env.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: () => '/api-docs',
+    on: {
+      error: (err, _req, res) => {
+        logger.error(`Proxy error → ${process.env.AUTH_SERVICE_URL}: ${(err as Error).message}`);
+        (res as Response).status(502).json({ error: 'Auth docs unavailable' });
+      },
+    },
+  }) as unknown as express.RequestHandler,
+);
+
+app.use(
+  '/api-docs/auth.json',
+  createProxyMiddleware({
+    target: process.env.AUTH_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: () => '/api-docs.json',
+    on: {
+      error: (err, _req, res) => {
+        logger.error(`Proxy error → ${process.env.AUTH_SERVICE_URL}: ${(err as Error).message}`);
+        (res as Response).status(502).json({ error: 'Auth docs unavailable' });
+      },
+    },
+  }) as unknown as express.RequestHandler,
+);
+
+app.use(
+  '/api-docs/patient',
+  createProxyMiddleware({
+    target: process.env.PATIENT_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: () => '/api-docs',
+    on: {
+      error: (err, _req, res) => {
+        logger.error(`Proxy error → ${process.env.PATIENT_SERVICE_URL}: ${(err as Error).message}`);
+        (res as Response).status(502).json({ error: 'Patient docs unavailable' });
+      },
+    },
+  }) as unknown as express.RequestHandler,
+);
+
+app.use(
+  '/api-docs/patient.json',
+  createProxyMiddleware({
+    target: process.env.PATIENT_SERVICE_URL,
+    changeOrigin: true,
+    pathRewrite: () => '/api-docs.json',
+    on: {
+      error: (err, _req, res) => {
+        logger.error(`Proxy error → ${process.env.PATIENT_SERVICE_URL}: ${(err as Error).message}`);
+        (res as Response).status(502).json({ error: 'Patient docs unavailable' });
+      },
+    },
+  }) as unknown as express.RequestHandler,
+);
 
 // ── JWT Authentication & Role Guard (runs before every /api/* proxy) ──────────
 app.use('/api', authenticate);
@@ -194,15 +259,23 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  logger.info(`[${SERVICE_NAME}] Running on port ${PORT}`);
-  logger.info(`[${SERVICE_NAME}] Upstream services configured:`);
-  logger.info(`  AUTH        → ${process.env.AUTH_SERVICE_URL}`);
-  logger.info(`  PATIENT     → ${process.env.PATIENT_SERVICE_URL}`);
-  logger.info(`  DOCTOR      → ${process.env.DOCTOR_SERVICE_URL}`);
-  logger.info(`  APPOINTMENT → ${process.env.APPOINTMENT_SERVICE_URL}`);
-  logger.info(`  TELEMEDICINE→ ${process.env.TELEMEDICINE_SERVICE_URL}`);
-  logger.info(`  PAYMENT     → ${process.env.PAYMENT_SERVICE_URL}`);
-  logger.info(`  NOTIFICATION→ ${process.env.NOTIFICATION_SERVICE_URL}`);
-  logger.info(`  AI          → ${process.env.AI_SERVICE_URL}`);
-});
+function start(): void {
+  app.listen(PORT, () => {
+    logger.info(`[${SERVICE_NAME}] Running on port ${PORT}`);
+    logger.info(`[${SERVICE_NAME}] Upstream services configured:`);
+    logger.info(`  AUTH        → ${process.env.AUTH_SERVICE_URL}`);
+    logger.info(`  PATIENT     → ${process.env.PATIENT_SERVICE_URL}`);
+    logger.info(`  DOCTOR      → ${process.env.DOCTOR_SERVICE_URL}`);
+    logger.info(`  APPOINTMENT → ${process.env.APPOINTMENT_SERVICE_URL}`);
+    logger.info(`  TELEMEDICINE→ ${process.env.TELEMEDICINE_SERVICE_URL}`);
+    logger.info(`  PAYMENT     → ${process.env.PAYMENT_SERVICE_URL}`);
+    logger.info(`  NOTIFICATION→ ${process.env.NOTIFICATION_SERVICE_URL}`);
+    logger.info(`  AI          → ${process.env.AI_SERVICE_URL}`);
+  });
+}
+
+if (process.env.NODE_ENV !== 'test') {
+  start();
+}
+
+export { app };

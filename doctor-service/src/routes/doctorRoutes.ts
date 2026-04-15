@@ -4,8 +4,10 @@ import {
   createPrescription,
   deleteScheduleSlot,
   getDoctorById,
+  getDoctorByUserIdInternal,
   getDoctorProfile,
   getDoctors,
+  getPatientPrescriptionsInternal,
   getPatientReports,
   getPendingDoctors,
   getPrescriptions,
@@ -28,6 +30,8 @@ router.post('/prescriptions', verifyToken, requireRole('doctor'), createPrescrip
 router.get('/prescriptions', verifyToken, requireRole('doctor'), getPrescriptions);
 router.get('/patients/:patientId/reports', verifyToken, requireRole('doctor'), getPatientReports);
 router.patch('/:id/verify', verifyToken, requireRole('admin'), verifyDoctor);
+router.get('/internal/user/:userId', getDoctorByUserIdInternal);
+router.get('/internal/patients/:patientId/prescriptions', getPatientPrescriptionsInternal);
 router.get('/:id', getDoctorById);
 
 export default router;

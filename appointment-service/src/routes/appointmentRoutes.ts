@@ -21,15 +21,15 @@ import {
 
 const router = Router();
 
-router.get('/', verifyToken, requireRole('patient', 'doctor'), getAppointments);
+router.get('/', verifyToken, requireRole('patient', 'doctor', 'admin'), getAppointments);
 router.get('/admin/all', verifyToken, requireRole('admin'), getAllAppointmentsAdmin);
 router.get('/:id', verifyToken, requireRole('patient', 'doctor', 'admin'), getAppointmentById);
-router.post('/', verifyToken, requireRole('patient'), createAppointment);
-router.patch('/:id/modify', verifyToken, requireRole('patient'), modifyAppointment);
-router.patch('/:id/cancel', verifyToken, requireRole('patient'), cancelAppointment);
-router.patch('/:id/accept', verifyToken, requireRole('doctor'), acceptAppointment);
-router.patch('/:id/reject', verifyToken, requireRole('doctor'), rejectAppointment);
-router.patch('/:id/complete', verifyToken, requireRole('doctor'), completeAppointment);
+router.post('/', verifyToken, requireRole('patient', 'admin'), createAppointment);
+router.patch('/:id/modify', verifyToken, requireRole('patient', 'admin'), modifyAppointment);
+router.patch('/:id/cancel', verifyToken, requireRole('patient', 'admin'), cancelAppointment);
+router.patch('/:id/accept', verifyToken, requireRole('doctor', 'admin'), acceptAppointment);
+router.patch('/:id/reject', verifyToken, requireRole('doctor', 'admin'), rejectAppointment);
+router.patch('/:id/complete', verifyToken, requireRole('doctor', 'admin'), completeAppointment);
 
 router.patch('/:id/pay', requireInternalApiKey, markAppointmentPaid);
 router.patch('/:id/start', requireInternalApiKey, startAppointment);

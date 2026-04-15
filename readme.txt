@@ -1,4 +1,4 @@
-SE3020 — Distributed Systems | GroupID-DS-Assignment
+SE3020 — Distributed Systems | Smart-Healthcare
 AI-Enabled Smart Healthcare Appointment & Telemedicine Platform
 =============================================================
 Member 1 (Infrastructure Lead) | Deployment Guide
@@ -52,8 +52,8 @@ Instructions for extracting each API key are in Section 6 below.
 =============================================================
 
 STEP 1 — Clone the repository
-  git clone https://github.com/[YOUR-REPO-URL].git
-  cd GroupID-DS-Assignment
+  git clone https://github.com/sithummadhuranga/Smart-Healthcare.git
+  cd Smart-Healthcare
 
 STEP 2 — Set up environment variables
   Copy the example file:
@@ -114,6 +114,8 @@ STEP 5 — Access the application
   Frontend (Vite build served by Nginx) : http://localhost
   API Gateway            : http://localhost:3000
   RabbitMQ Management UI : http://localhost:15672  (user: guest / pass: guest)
+  MongoDB UI (mongo-express) : http://localhost:8081
+  PostgreSQL UI (pgAdmin)    : http://localhost:5050  (email: admin@smarthealth.local / pass: admin123)
   Auth Service (direct)  : http://localhost:3001
   Patient Service        : http://localhost:3002
   Doctor Service         : http://localhost:3003
@@ -123,6 +125,11 @@ STEP 5 — Access the application
   Notification Service   : http://localhost:3007
   AI Symptom Checker     : http://localhost:8000
   AI Service API Docs    : http://localhost:8000/docs
+
+  Note:
+    PostgreSQL setup is code-first at service startup.
+    appointment-service and payment-service create/verify their databases, schemas,
+    indexes, and optional demo seed data automatically.
 
 STEP 6 — Stop the application
   docker-compose down           # stops containers, keeps volumes (data preserved)
@@ -149,8 +156,13 @@ STEP 2 — Start Minikube
   Verify: minikube status  — should show: host: Running, kubelet: Running
 
 STEP 3 — Point Docker CLI to Minikube's Docker daemon
-  Run this command in EVERY terminal session you use for building:
-    eval $(minikube docker-env)
+  Run the command that matches your shell in EVERY terminal session you use for building:
+
+    PowerShell:
+      minikube -p minikube docker-env | Invoke-Expression
+
+    Bash / Git Bash / WSL:
+      eval $(minikube docker-env)
 
   This makes Docker commands build images inside Minikube's daemon
   instead of your local daemon. Required because k8s manifests use
@@ -168,15 +180,28 @@ STEP 5 — Create the app-secrets Secret
   kubectl create secret generic app-secrets \
     --from-literal=JWT_SECRET="your-jwt-secret-here" \
     --from-literal=JWT_REFRESH_SECRET="your-refresh-secret-here" \
+    --from-literal=POSTGRES_USER="postgres" \
+    --from-literal=POSTGRES_PASSWORD="postgres" \
+    --from-literal=AUTH_MONGODB_URI="mongodb://mongodb:27017/authdb" \
+    --from-literal=MONGODB_URI="mongodb://mongodb:27017/patientdb" \
+    --from-literal=DOCTOR_MONGODB_URI="mongodb://mongodb:27017/doctordb" \
+    --from-literal=APPOINTMENT_DB_URL="postgresql://postgres:postgres@postgres:5432/appointmentdb" \
+    --from-literal=PAYMENT_DB_URL="postgresql://postgres:postgres@postgres:5432/paymentdb" \
+    --from-literal=RABBITMQ_URL="amqp://guest:guest@rabbitmq:5672" \
+    --from-literal=INTERNAL_SERVICE_API_KEY="your-internal-api-key" \
+    --from-literal=CLOUDINARY_CLOUD_NAME="your-cloud-name" \
+    --from-literal=CLOUDINARY_API_KEY="your-cloudinary-key" \
+    --from-literal=CLOUDINARY_API_SECRET="your-cloudinary-secret" \
     --from-literal=STRIPE_SECRET_KEY="sk_test_..." \
+    --from-literal=STRIPE_PUBLISHABLE_KEY="pk_test_..." \
     --from-literal=STRIPE_WEBHOOK_SECRET="whsec_..." \
-    --from-literal=AGORA_APP_CERTIFICATE="your-agora-certificate" \
-    --from-literal=GEMINI_API_KEY="your-gemini-key" \
     --from-literal=TWILIO_ACCOUNT_SID="ACxxxxx" \
     --from-literal=TWILIO_AUTH_TOKEN="your-twilio-token" \
+    --from-literal=TWILIO_PHONE_NUMBER="+1xxxxxxxxxx" \
     --from-literal=SENDGRID_API_KEY="SG.xxxxx" \
-    --from-literal=CLOUDINARY_API_SECRET="your-cloudinary-secret" \
-    --from-literal=POSTGRES_PASSWORD="postgres"
+    --from-literal=AGORA_APP_ID="your-agora-app-id" \
+    --from-literal=AGORA_APP_CERTIFICATE="your-agora-certificate" \
+    --from-literal=GEMINI_API_KEY="your-gemini-key"
 
   Verify: kubectl get secrets
 
@@ -184,7 +209,7 @@ STEP 6 — Deploy all Kubernetes manifests
   kubectl apply -f k8s/
 
   This creates: Deployments, Services, ConfigMap, Ingress for all services,
-                plus StatefulSets for MongoDB, PostgreSQL, RabbitMQ.
+                plus persistent storage (PVCs) for MongoDB, PostgreSQL, RabbitMQ.
 
 STEP 7 — Verify all pods are Running
   kubectl get pods
@@ -220,6 +245,8 @@ STEP 10 — Access the application via Ingress
   http://localhost                http://healthcare.local
   http://localhost:3000           http://healthcare.local/api/*
   http://localhost:15672          minikube service rabbitmq --url
+  http://localhost:8081           n/a (compose-only mongo-express)
+  http://localhost:5050           n/a (compose-only pgAdmin)
   http://localhost:8000/docs      (same as above via Ingress)
 
 
@@ -253,7 +280,7 @@ ISSUE: Pod in CrashLoopBackOff (Kubernetes)
     kubectl describe pod <pod-name>       # see events leading to crash
   COMMON CAUSES:
     a) Missing secret key — check kubectl get secrets and compare to k8s/configmap.yaml
-    b) Wrong image name — ensure eval $(minikube docker-env) was run before docker-compose build
+    b) Wrong image name — ensure your Minikube Docker environment command was run before docker-compose build
     c) Service URL wrong — all inter-service URLs must use K8s service names (not localhost)
 
 ISSUE: Service unreachable in Kubernetes

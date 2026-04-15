@@ -4,7 +4,7 @@ import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import appointmentRoutes from './routes/appointmentRoutes';
-import { pool } from './db/pool';
+import { initializeDatabase, pool } from './db/pool';
 import { closeRabbitConnections } from './services/rabbitmqPublisher';
 
 const app = express();
@@ -36,8 +36,8 @@ app.use((_req: Request, res: Response) => {
 
 async function bootstrap(): Promise<void> {
   try {
-    await pool.query('SELECT 1');
-    console.log(`[${SERVICE_NAME}] Connected to PostgreSQL`);
+    await initializeDatabase();
+    console.log(`[${SERVICE_NAME}] PostgreSQL schema verified`);
 
     app.listen(PORT, () => {
       console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);

@@ -5,11 +5,11 @@ TEAM MEMBERS
 ============
 
 Member 1 — Infrastructure Lead + API Gateway + Auth Service + Patient Service
-  Name               : [REPLACE WITH FULL NAME]
-  Registration No.   : [REPLACE WITH REG NO, e.g. IT21000000]
-  Student ID         : [REPLACE WITH STUDENT ID]
-  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
-  Email              : [REPLACE WITH EMAIL]
+  Name               : H.M.T.S.M.DISSANAYAKE
+  Registration No.   : IT23294066
+  Student ID         : IT23294066
+  GitHub Username    : sithummadhuranga
+  Email              : it23294066@my.sliit.lk
 
 Member 2 — Doctor Service + Appointment Service + Admin APIs
   Name               : [REPLACE WITH FULL NAME]

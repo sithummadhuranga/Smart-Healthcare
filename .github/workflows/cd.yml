@@ -9,12 +9,14 @@
 name: CD
 
 on:
-  push:
-    branches: [main]
   workflow_run:
     workflows: [CI]
     types: [completed]
     branches: [main]
+
+concurrency:
+  group: cd-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: true
 
 env:
   NODE_VERSION: "20"
@@ -27,6 +29,7 @@ jobs:
   check-ci:
     name: Check CI Status
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
     outputs:
       should-deploy: ${{ steps.check.outputs.result }}
     steps:
@@ -34,11 +37,51 @@ jobs:
         id: check
         run: echo "result=true" >> $GITHUB_OUTPUT
 
+  # ── Security gate: scan service filesystems before image publish ──────────
+  security-gate:
+    name: Security Scan (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    needs: check-ci
+    if: needs.check-ci.outputs.should-deploy == 'true'
+    permissions:
+      contents: read
+      security-events: write
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - api-gateway
+          - auth-service
+          - patient-service
+          - doctor-service
+          - appointment-service
+          - telemedicine-service
+          - payment-service
+          - notification-service
+          - ai-symptom-service
+          - frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: ./${{ matrix.service }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+
   # ── Build and push all Docker images to GHCR ────────────────────────────
   build-and-push:
     name: Build & Push (${{ matrix.service }})
     runs-on: ubuntu-latest
-    needs: check-ci
+    needs: [check-ci, security-gate]
+    if: needs.check-ci.outputs.should-deploy == 'true'
     permissions:
       contents: read
       packages: write

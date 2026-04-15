@@ -42,7 +42,7 @@ const ROUTE_ACCESS: Array<{
   { prefix: /^\/api\/appointments/, access: ['patient', 'doctor', 'admin'] },
 
   // Telemedicine service
-  { prefix: /^\/api\/telemedicine/, access: ['patient', 'doctor'] },
+  { prefix: /^\/api\/telemedicine/, access: ['patient', 'doctor', 'admin'] },
 
   // Payment service
   { prefix: /^\/api\/payments\/webhook/, method: 'POST', access: 'public' }, // Stripe webhook
@@ -52,7 +52,7 @@ const ROUTE_ACCESS: Array<{
   { prefix: /^\/api\/notifications/, access: ['admin'] },
 
   // AI Symptom Checker
-  { prefix: /^\/api\/ai/, access: ['patient'] },
+  { prefix: /^\/api\/ai/, access: ['patient', 'admin'] },
 ];
 
 // ── JWT Validation Middleware ──────────────────────────────────────────────

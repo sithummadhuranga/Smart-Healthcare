@@ -8,7 +8,7 @@ const app = express();
 const PORT = Number(process.env.NOTIFICATION_SERVICE_PORT) || 3007;
 const SERVICE_NAME = 'notification-service';
 
-app.get('/health', (_req: Request, res: Response) => {
+function sendHealth(_req: Request, res: Response): void {
   res.status(200).json({
     status: 'ok',
     service: SERVICE_NAME,
@@ -16,7 +16,10 @@ app.get('/health', (_req: Request, res: Response) => {
     email: getEmailProviderStatus(),
     sms: getSmsProviderStatus(),
   });
-});
+}
+
+app.get('/health', sendHealth);
+app.get('/api/notifications/health', sendHealth);
 
 app.use((_req: Request, res: Response) => {
   res.status(404).json({ error: 'Route not found' });

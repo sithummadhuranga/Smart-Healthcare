@@ -61,6 +61,23 @@ export async function getDoctorById(req: Request, res: Response): Promise<void> 
   }
 }
 
+export async function getDoctorByUserIdInternal(req: Request, res: Response): Promise<void> {
+  try {
+    const doctor = await Doctor.findOne({ userId: req.params.userId })
+      .select('userId name specialty bio consultationFee isVerified availableSlots')
+      .lean();
+
+    if (!doctor || !doctor.isVerified) {
+      res.status(404).json({ error: 'Doctor not found' });
+      return;
+    }
+
+    res.status(200).json(doctor);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch doctor' });
+  }
+}
+
 export async function getDoctorProfile(req: Request, res: Response): Promise<void> {
   try {
     const doctor = await ensureDoctorProfile(req);
@@ -221,6 +238,7 @@ export async function createPrescription(req: Request, res: Response): Promise<v
 
     const prescription = await Prescription.create({
       doctorId: req.user!.userId,
+      doctorName: req.user!.name,
       patientId,
       appointmentId,
       medications,
@@ -243,6 +261,30 @@ export async function getPrescriptions(req: Request, res: Response): Promise<voi
     res.status(200).json(prescriptions);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch prescriptions' });
+  }
+}
+
+export async function getPatientPrescriptionsInternal(req: Request, res: Response): Promise<void> {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string, 10) || 1);
+    const limit = Math.min(50, Math.max(1, parseInt(req.query.limit as string, 10) || 10));
+    const patientId = req.params.patientId;
+
+    const [prescriptions, total] = await Promise.all([
+      Prescription.find({ patientId })
+        .sort({ issuedAt: -1, createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .lean(),
+      Prescription.countDocuments({ patientId }),
+    ]);
+
+    res.status(200).json({
+      prescriptions,
+      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch patient prescriptions' });
   }
 }
 

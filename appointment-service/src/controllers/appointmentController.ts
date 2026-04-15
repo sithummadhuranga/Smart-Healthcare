@@ -332,6 +332,9 @@ export async function getAppointments(req: Request, res: Response): Promise<void
     } else if (req.user!.role === 'doctor') {
       values.push(req.user!.userId);
       query += `doctor_id = $${values.length}`;
+    } else if (req.user!.role === 'admin') {
+      // Admin can query across all appointments (optionally filtered by status).
+      query += '1=1';
     } else {
       res.status(403).json({ error: 'Insufficient permissions' });
       return;

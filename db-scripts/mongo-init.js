@@ -1,52 +1,61 @@
 // ============================================================
 // mongo-init.js
 // Runs inside the MongoDB container on first start.
-// Creates databases, collections, and indexes.
-// Member 1 — Infrastructure Lead
+// Creates databases, collections, and indexes only.
+// Demo data is seeded by the application services at runtime so
+// that MongoDB and PostgreSQL sample records stay aligned.
 // ============================================================
+
+function ensureCollection(database, collectionName) {
+  const existing = database.getCollectionNames();
+  if (!existing.includes(collectionName)) {
+    database.createCollection(collectionName);
+  }
+}
 
 // ---- Auth DB ------------------------------------------------
 db = db.getSiblingDB('authdb');
 
-db.createCollection('users');
+ensureCollection(db, 'users');
+ensureCollection(db, 'auditlogs');
 
-// Unique index on email — enforced at DB level
 db.users.createIndex({ email: 1 }, { unique: true });
+db.users.createIndex({ role: 1, isVerified: 1 });
+db.users.createIndex({ createdAt: -1 });
 
-print('[mongo-init] authdb initialized');
+db.auditlogs.createIndex({ action: 1, createdAt: -1 });
+db.auditlogs.createIndex({ actorUserId: 1, createdAt: -1 });
+db.auditlogs.createIndex({ targetUserId: 1, createdAt: -1 });
+db.auditlogs.createIndex({ outcome: 1, createdAt: -1 });
+
+print('[mongo-init] authdb collections and indexes ready');
 
 // ---- Patient DB --------------------------------------------
 db = db.getSiblingDB('patientdb');
 
-db.createCollection('patients');
+ensureCollection(db, 'patients');
+ensureCollection(db, 'medicalreports');
 
 db.patients.createIndex({ userId: 1 }, { unique: true });
 db.patients.createIndex({ email: 1 });
+db.medicalreports.createIndex({ patientId: 1, createdAt: -1 });
+db.medicalreports.createIndex({ reportType: 1, createdAt: -1 });
 
-print('[mongo-init] patientdb initialized');
+print('[mongo-init] patientdb collections and indexes ready');
 
 // ---- Doctor DB ---------------------------------------------
 db = db.getSiblingDB('doctordb');
 
-db.createCollection('doctors');
-db.createCollection('prescriptions');
+ensureCollection(db, 'doctors');
+ensureCollection(db, 'prescriptions');
 
 db.doctors.createIndex({ userId: 1 }, { unique: true });
 db.doctors.createIndex({ email: 1 });
 db.doctors.createIndex({ specialty: 1 });
 db.doctors.createIndex({ isVerified: 1 });
+db.prescriptions.createIndex({ patientId: 1, issuedAt: -1 });
+db.prescriptions.createIndex({ doctorId: 1, issuedAt: -1 });
+db.prescriptions.createIndex({ appointmentId: 1 }, { unique: true });
 
-db.prescriptions.createIndex({ patientId: 1 });
-db.prescriptions.createIndex({ doctorId: 1 });
-db.prescriptions.createIndex({ appointmentId: 1 });
-
-print('[mongo-init] doctordb initialized');
-
-print('[mongo-init] All databases ready.');
-
-// NOTE: Admin user must be seeded separately.
-//   1. Start the stack: docker-compose up -d mongodb
-//   2. Open a shell: docker exec -it mongodb mongosh
-//   3. Use authdb; then insert a user with role "admin"
-//      and a bcrypt-hashed password (12 rounds).
-//   OR run:  node db-scripts/seed-admin.js  (see that file)
+print('[mongo-init] doctordb collections and indexes ready');
+print('[mongo-init] Demo data will be seeded by auth-service, patient-service, and doctor-service.');

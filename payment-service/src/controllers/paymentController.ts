@@ -322,7 +322,7 @@ const fetchConsultationFee = async (doctorId: string): Promise<number> => {
   const doctorServiceUrl = getServiceUrl('DOCTOR_SERVICE_URL', 'http://doctor-service:3003');
 
   try {
-    const response = await axios.get(`${doctorServiceUrl}/api/doctors/${encodeURIComponent(doctorId)}`, {
+    const response = await axios.get(`${doctorServiceUrl}/api/doctors/internal/user/${encodeURIComponent(doctorId)}`, {
       timeout: 5_000,
     });
 

@@ -8,6 +8,7 @@ export interface PrescriptionMedication {
 
 export interface PrescriptionDocument extends Document {
   doctorId: string;
+  doctorName?: string;
   patientId: string;
   appointmentId: string;
   medications: PrescriptionMedication[];
@@ -29,6 +30,7 @@ const MedicationSchema = new Schema<PrescriptionMedication>(
 const PrescriptionSchema = new Schema<PrescriptionDocument>(
   {
     doctorId: { type: String, required: true, index: true },
+    doctorName: { type: String },
     patientId: { type: String, required: true, index: true },
     appointmentId: { type: String, required: true, index: true },
     medications: { type: [MedicationSchema], required: true },
