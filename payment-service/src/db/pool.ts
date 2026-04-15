@@ -2,6 +2,7 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import { Pool } from 'pg';
+import { URL } from 'url';
 
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), '..', '.env') });
@@ -90,13 +91,76 @@ const schemaStatements = [
   'CREATE INDEX IF NOT EXISTS idx_payment_webhook_events_status ON payment_webhook_events (status, created_at DESC);',
 ];
 
+const seedStatements = [
+  `INSERT INTO payments (
+      appointment_id,
+      patient_id,
+      amount,
+      currency,
+      payment_method,
+      stripe_payment_intent_id,
+      stripe_charge_id,
+      status
+    )
+    SELECT
+      '00000000-0000-4000-8000-000000000001',
+      '000000000000000000000002',
+      25.00,
+      'usd',
+      'card',
+      'pi_seed_001',
+      'ch_seed_001',
+      'COMPLETED'
+    WHERE NOT EXISTS (SELECT 1 FROM payments);`,
+];
+
+const parseConnectionString = (value: string): { adminConnectionString: string; databaseName: string } => {
+  const parsed = new URL(value);
+  const databaseName = parsed.pathname.replace(/^\//, '');
+
+  if (!databaseName) {
+    throw new Error('[payment-service] PAYMENT_DB_URL must include a database name');
+  }
+
+  parsed.pathname = '/postgres';
+  return {
+    adminConnectionString: parsed.toString(),
+    databaseName,
+  };
+};
+
+const ensureDatabaseExists = async (value: string): Promise<void> => {
+  const { adminConnectionString, databaseName } = parseConnectionString(value);
+  const adminPool = new Pool({ connectionString: adminConnectionString });
+
+  try {
+    const result = await adminPool.query<{ present: number }>(
+      'SELECT 1::int AS present FROM pg_database WHERE datname = $1 LIMIT 1',
+      [databaseName]
+    );
+
+    if (result.rowCount === 0) {
+      await adminPool.query(`CREATE DATABASE "${databaseName.replace(/"/g, '""')}"`);
+    }
+  } finally {
+    await adminPool.end();
+  }
+};
+
 export const initializeDatabase = async (): Promise<void> => {
   try {
+    await ensureDatabaseExists(primaryConnectionString);
     let client = await pool.connect();
 
     try {
       for (const statement of schemaStatements) {
         await client.query(statement);
+      }
+
+      if ((process.env.SEED_DEMO_DATA || 'true').toLowerCase() === 'true') {
+        for (const statement of seedStatements) {
+          await client.query(statement);
+        }
       }
 
       console.log('[payment-service] PostgreSQL connected and schema verified');
@@ -128,6 +192,12 @@ export const initializeDatabase = async (): Promise<void> => {
         try {
           for (const statement of schemaStatements) {
             await fallbackClient.query(statement);
+          }
+
+          if ((process.env.SEED_DEMO_DATA || 'true').toLowerCase() === 'true') {
+            for (const statement of seedStatements) {
+              await fallbackClient.query(statement);
+            }
           }
 
           console.log('[payment-service] PostgreSQL connected and schema verified using localhost fallback');

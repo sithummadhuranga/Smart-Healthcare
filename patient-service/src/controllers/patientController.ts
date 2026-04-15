@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import axios from 'axios';
 import { Patient } from '../models/Patient';
 import { MedicalReport } from '../models/MedicalReport';
 import { uploadToCloudinary } from '../config/cloudinary';
@@ -209,33 +210,34 @@ export async function getPrescriptions(req: Request, res: Response): Promise<voi
     const userId = req.user!.userId;
     const page = Math.max(1, parseInt(req.query['page'] as string) || 1);
     const limit = Math.min(50, Math.max(1, parseInt(req.query['limit'] as string) || 10));
+    const doctorServiceUrl = process.env.DOCTOR_SERVICE_URL || 'http://doctor-service:3003';
 
-    const patient = await Patient.findOne({ userId });
-    if (!patient) {
-      res.status(200).json({
-        prescriptions: [],
-        pagination: { page, limit, total: 0, pages: 0 },
-      });
+    const response = await axios.get(
+      `${doctorServiceUrl}/api/doctors/internal/patients/${encodeURIComponent(userId)}/prescriptions`,
+      {
+        params: { page, limit },
+        timeout: 5000,
+      },
+    );
+
+    res.status(200).json(response.data);
+  } catch (err) {
+    logger.error(`getPrescriptions error: ${(err as Error).message}`);
+
+    if (axios.isAxiosError(err) && err.response) {
+      res.status(err.response.status).json(
+        typeof err.response.data === 'object' && err.response.data !== null
+          ? err.response.data
+          : { error: 'Failed to fetch prescriptions from doctor service' },
+      );
       return;
     }
 
-    // Prescriptions are medical reports with type 'prescription'
-    const filter = { patientId: patient._id.toString(), reportType: 'prescription' };
+    if (axios.isAxiosError(err) && err.code) {
+      res.status(503).json({ error: 'Doctor service is unavailable' });
+      return;
+    }
 
-    const [prescriptions, total] = await Promise.all([
-      MedicalReport.find(filter)
-        .sort({ createdAt: -1 })
-        .skip((page - 1) * limit)
-        .limit(limit),
-      MedicalReport.countDocuments(filter),
-    ]);
-
-    res.status(200).json({
-      prescriptions,
-      pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-    });
-  } catch (err) {
-    logger.error(`getPrescriptions error: ${(err as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });
   }
 }

@@ -145,7 +145,7 @@ router.post('/refresh', refresh);
  *                   type: string
  *                   example: Logged out successfully
  */
-router.post('/logout', logout);
+router.post('/logout', verifyToken, logout);
 
 // ── Authenticated routes ───────────────────────────────────────────────────────
 

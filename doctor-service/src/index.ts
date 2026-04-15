@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './swagger';
 import doctorRoutes from './routes/doctorRoutes';
+import { runSeeders } from './seeders';
 
 const app = express();
 const PORT = Number(process.env.DOCTOR_SERVICE_PORT) || 3003;
@@ -38,6 +39,7 @@ async function bootstrap(): Promise<void> {
   try {
     await mongoose.connect(MONGODB_URI);
     console.log(`[${SERVICE_NAME}] Connected to MongoDB`);
+    await runSeeders();
 
     app.listen(PORT, () => {
       console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);

@@ -15,7 +15,6 @@ metadata:
   labels:
     app: healthcare-platform
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     nginx.ingress.kubernetes.io/proxy-body-size: "50m"          # Allow large file uploads
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
@@ -31,6 +30,14 @@ spec:
     - host: healthcare.local
       http:
         paths:
+          # Gateway docs and service docs index
+          - path: /api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port:
+                  number: 3000
           # All API calls go to API Gateway (which routes to individual services)
           - path: /api
             pathType: Prefix

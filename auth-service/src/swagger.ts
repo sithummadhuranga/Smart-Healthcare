@@ -1,4 +1,14 @@
 import swaggerJsdoc from 'swagger-jsdoc';
+import path from 'path';
+
+const apiDefinitionFiles = [
+  // Docker/runtime build output
+  path.join(__dirname, 'routes', '*.js'),
+  path.join(__dirname, 'index.js'),
+  // Local TypeScript source (dev)
+  path.join(process.cwd(), 'src', 'routes', '*.ts'),
+  path.join(process.cwd(), 'src', 'index.ts'),
+];
 
 const options: swaggerJsdoc.Options = {
   definition: {
@@ -97,7 +107,7 @@ const options: swaggerJsdoc.Options = {
       { name: 'System', description: 'Health & status endpoints' },
     ],
   },
-  apis: ['./src/routes/*.ts', './src/index.ts'],
+  apis: apiDefinitionFiles,
 };
 
 export const swaggerSpec = swaggerJsdoc(options);

@@ -1,2 +1,2 @@
-GitHub Repository : [REPLACE WITH FULL GITHUB REPO URL, e.g. https://github.com/yourorg/GroupID-DS-Assignment]
+GitHub Repository : https://github.com/sithummadhuranga/Smart-Healthcare
 YouTube Demo Video : [REPLACE WITH YOUTUBE UNLISTED VIDEO URL]
