@@ -1,34 +1,49 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
-import swaggerUi from 'swagger-ui-express';
-import { swaggerSpec } from './swagger';
+import { closeConsumer, isConsumerRunning, startConsumer } from './consumers/notificationConsumer';
+import { getEmailProviderStatus, isEmailConfigured } from './services/emailService';
+import { getSmsProviderStatus, isSmsConfigured } from './services/smsService';
 
 const app = express();
 const PORT = Number(process.env.NOTIFICATION_SERVICE_PORT) || 3007;
 const SERVICE_NAME = 'notification-service';
 
-app.use(express.json());
-
-// ── Swagger API Docs ────────────────────────────────────────────────────────
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customSiteTitle: 'Notification Service API Docs',
-  swaggerOptions: { persistAuthorization: true },
-}));
-app.get('/api-docs.json', (_req: Request, res: Response) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.send(swaggerSpec);
-});
-
 app.get('/health', (_req: Request, res: Response) => {
-  res.status(200).json({ status: 'ok', service: SERVICE_NAME, consumer: 'stub' });
+  res.status(200).json({
+    status: 'ok',
+    service: SERVICE_NAME,
+    consumer: isConsumerRunning() ? 'active' : 'initializing',
+    email: getEmailProviderStatus(),
+    sms: getSmsProviderStatus(),
+  });
 });
 
 app.use((_req: Request, res: Response) => {
-  res.status(501).json({ error: 'Not implemented yet — stub service' });
+  res.status(404).json({ error: 'Route not found' });
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);
-  console.log(`[${SERVICE_NAME}] RabbitMQ consumer will connect on startup (stub: not connected)`);
-  console.log(`[${SERVICE_NAME}] API Docs: http://localhost:${PORT}/api-docs`);
+  console.log(`[${SERVICE_NAME}] Email provider: ${isEmailConfigured() ? 'configured' : 'missing SENDGRID_API_KEY'}`);
+  console.log(`[${SERVICE_NAME}] SMS provider: ${isSmsConfigured() ? 'configured' : 'missing Twilio credentials'}`);
+});
+
+void startConsumer().catch((error) => {
+  console.error(`[${SERVICE_NAME}] Failed to start RabbitMQ consumer`, error);
+});
+
+async function shutdown(signal: string): Promise<void> {
+  console.log(`[${SERVICE_NAME}] Received ${signal}. Shutting down...`);
+  await closeConsumer();
+  server.close(() => {
+    process.exit(0);
+  });
+}
+
+process.on('SIGINT', () => {
+  void shutdown('SIGINT');
+});
+
+process.on('SIGTERM', () => {
+  void shutdown('SIGTERM');
 });

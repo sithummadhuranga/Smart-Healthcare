@@ -67,10 +67,12 @@ CREATE TABLE IF NOT EXISTS payments (
     patient_id                VARCHAR       NOT NULL,
     amount                    NUMERIC(10,2) NOT NULL,
     currency                  VARCHAR(3)    NOT NULL DEFAULT 'USD',
+    payment_method            VARCHAR,
     stripe_payment_intent_id  VARCHAR,
     stripe_charge_id          VARCHAR,
     status                    VARCHAR(20)   NOT NULL DEFAULT 'PENDING',
-    created_at                TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    created_at                TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at                TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_pay_appointment ON payments (appointment_id);
@@ -78,3 +80,15 @@ CREATE INDEX IF NOT EXISTS idx_pay_patient     ON payments (patient_id);
 CREATE INDEX IF NOT EXISTS idx_pay_status      ON payments (status);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_pay_stripe_intent ON payments (stripe_payment_intent_id)
     WHERE stripe_payment_intent_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS payment_webhook_events (
+    event_id                  VARCHAR       PRIMARY KEY,
+    event_type                VARCHAR       NOT NULL,
+    stripe_payment_intent_id  VARCHAR,
+    status                    VARCHAR(20)   NOT NULL DEFAULT 'PROCESSING',
+    last_error                TEXT,
+    created_at                TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    updated_at                TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pay_webhook_status ON payment_webhook_events (status, created_at DESC);

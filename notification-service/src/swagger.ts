@@ -8,27 +8,15 @@ const options: swaggerJsdoc.Options = {
       version: '1.0.0',
       description:
         'Event-driven SMS (Twilio) and email (SendGrid) notification service. ' +
-        'Consumes RabbitMQ events from Appointment and Payment services. Owned by Member 4.',
-      contact: { name: 'Member 4 – Notification & AI Services' },
+        'Consumes RabbitMQ events from Appointment, Payment, and Telemedicine services. Owned by Member 3.',
+      contact: { name: 'Member 3 – Telemedicine, Payment & Notification Services' },
     },
     servers: [
       { url: 'http://localhost:3007', description: 'Direct service (dev)' },
       { url: 'http://localhost:3000', description: 'Via API Gateway' },
     ],
     components: {
-      securitySchemes: {
-        BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-      },
       schemas: {
-        NotificationPreferences: {
-          type: 'object',
-          properties: {
-            emailEnabled: { type: 'boolean', default: true },
-            smsEnabled: { type: 'boolean', default: true },
-            appointmentReminders: { type: 'boolean', default: true },
-            paymentReceipts: { type: 'boolean', default: true },
-          },
-        },
         ErrorResponse: {
           type: 'object',
           properties: { error: { type: 'string' } },
@@ -36,7 +24,6 @@ const options: swaggerJsdoc.Options = {
       },
     },
     tags: [
-      { name: 'Notifications', description: 'Notification management' },
       { name: 'System', description: 'Health check' },
     ],
     paths: {
@@ -55,28 +42,15 @@ const options: swaggerJsdoc.Options = {
                     properties: {
                       status: { type: 'string', example: 'ok' },
                       service: { type: 'string', example: 'notification-service' },
-                      consumer: { type: 'string', enum: ['connected', 'disconnected', 'stub'] },
+                      consumer: { type: 'string', enum: ['active', 'initializing'] },
+                      email: { type: 'string', enum: ['active', 'degraded'] },
+                      sms: { type: 'string', enum: ['active', 'degraded'] },
                     },
                   },
                 },
               },
             },
           },
-        },
-      },
-      '/api/notifications/preferences': {
-        get: {
-          tags: ['Notifications'],
-          summary: 'Get notification preferences',
-          security: [{ BearerAuth: [] }],
-          responses: { '200': { description: 'Current preferences', content: { 'application/json': { schema: { '$ref': '#/components/schemas/NotificationPreferences' } } } } },
-        },
-        put: {
-          tags: ['Notifications'],
-          summary: 'Update notification preferences',
-          security: [{ BearerAuth: [] }],
-          requestBody: { required: true, content: { 'application/json': { schema: { '$ref': '#/components/schemas/NotificationPreferences' } } } },
-          responses: { '200': { description: 'Updated preferences' } },
         },
       },
     },
