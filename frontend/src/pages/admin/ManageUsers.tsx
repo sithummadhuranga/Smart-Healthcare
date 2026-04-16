@@ -11,6 +11,7 @@ interface User {
   email: string;
   role: string;
   isActive?: boolean;
+  isVerified?: boolean;
 }
 
 const ROLE_BADGE: Record<string, { bg: string; color: string }> = {
@@ -24,20 +25,37 @@ export default function ManageUsers() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
-    api.get('/api/patients', { params: { limit: 50 } })
-      .then(({ data }) => setUsers(Array.isArray(data) ? data : data.patients ?? []))
-      .catch(() => setToast({ message: 'Failed to load users.', type: 'error' }))
-      .finally(() => setLoading(false));
-  }, []);
+    fetchUsers();
+  }, [roleFilter]);
 
-  function toggleActive(userId: string) {
-    setUsers((prev) => prev.map((u) => {
-      const id = u.userId ?? u._id;
-      return id === userId ? { ...u, isActive: !u.isActive } : u;
-    }));
-    setToast({ message: 'User status updated.', type: 'success' });
+  async function fetchUsers() {
+    setLoading(true);
+    try {
+      const params: Record<string, string | number> = { limit: 100 };
+      if (roleFilter) params.role = roleFilter;
+      const { data } = await api.get('/api/auth/users', { params });
+      setUsers(Array.isArray(data) ? data : data.users ?? []);
+    } catch {
+      setToast({ message: 'Failed to load users.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deactivateUser(userId: string) {
+    try {
+      await api.patch(`/api/auth/users/${userId}/deactivate`);
+      setUsers((prev) => prev.map((u) => {
+        const id = u.userId ?? u._id;
+        return id === userId ? { ...u, isActive: false } : u;
+      }));
+      setToast({ message: 'User deactivated.', type: 'success' });
+    } catch {
+      setToast({ message: 'Failed to deactivate user.', type: 'error' });
+    }
   }
 
   return (
@@ -60,8 +78,20 @@ export default function ManageUsers() {
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: 14 }}>Loading users…</div>
         ) : (
           <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ padding: '14px 20px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ padding: '14px 20px', background: 'var(--bg)', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)' }}>{users.length} Users</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {['', 'patient', 'doctor', 'admin'].map(r => (
+                  <button key={r} onClick={() => setRoleFilter(r)} style={{
+                    padding: '4px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, cursor: 'pointer',
+                    background: roleFilter === r ? 'var(--primary)' : 'var(--bg-secondary)',
+                    color: roleFilter === r ? '#fff' : 'var(--text-secondary)',
+                    border: 'none',
+                  }}>
+                    {r ? r.charAt(0).toUpperCase() + r.slice(1) : 'All'}
+                  </button>
+                ))}
+              </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -96,12 +126,16 @@ export default function ManageUsers() {
                             </span>
                           </td>
                           <td style={{ padding: '14px 20px' }}>
-                            <button
-                              onClick={() => toggleActive(id)}
-                              style={{ padding: '6px 14px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: 'none', background: active ? '#FEE2E2' : '#ECFDF5', color: active ? '#991B1B' : '#065F46' }}
-                            >
-                              {active ? 'Deactivate' : 'Activate'}
-                            </button>
+                            {active && u.role !== 'admin' ? (
+                              <button
+                                onClick={() => deactivateUser(id)}
+                                style={{ padding: '6px 14px', borderRadius: 7, fontSize: 11, fontWeight: 700, cursor: 'pointer', border: 'none', background: '#FEE2E2', color: '#991B1B' }}
+                              >
+                                Deactivate
+                              </button>
+                            ) : !active ? (
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Deactivated</span>
+                            ) : null}
                           </td>
                         </tr>
                       );

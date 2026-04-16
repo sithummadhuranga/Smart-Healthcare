@@ -15,12 +15,20 @@ api.interceptors.request.use((config) => {
 });
 
 // Handle 401 globally — clear session and redirect to login
+// Only redirect for actual auth failures (not when dashboard API calls fail silently)
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.clear();
-      window.location.href = '/login';
+      const path = window.location.pathname;
+      // If we're already on login or the request URL is not the login endpoint,
+      // only redirect if the token itself is invalid/expired (not API-specific auth)
+      const requestUrl = error.config?.url || '';
+      const isLoginRequest = requestUrl.includes('/api/auth/login');
+      if (!isLoginRequest && path !== '/login') {
+        localStorage.clear();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   },

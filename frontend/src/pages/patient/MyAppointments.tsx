@@ -103,6 +103,8 @@ export default function MyAppointments() {
             {appointments.map((appt) => {
               const cfg = STATUS_CONFIG[appt.status] ?? { bg: '#F1F5F9', color: '#64748B', label: appt.status };
               const canCancel = appt.status === 'PENDING' || appt.status === 'CONFIRMED';
+              const canPay = appt.status === 'CONFIRMED';
+              const canJoin = appt.status === 'PAID' || appt.status === 'IN_PROGRESS';
               return (
                 <div key={appt.id} className="animate-fade-in" style={{
                   background: '#fff', borderRadius: 14, border: '1px solid var(--border)',
@@ -124,10 +126,26 @@ export default function MyAppointments() {
                       </div>
                     )}
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, flexWrap: 'wrap' }}>
                     <span style={{ background: cfg.bg, color: cfg.color, fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 14 }}>
                       {cfg.label}
                     </span>
+                    {canPay && (
+                      <button
+                        onClick={() => navigate(`/patient/payment/${appt.id}`)}
+                        style={{ fontSize: 12, color: '#fff', background: '#7C3AED', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        💳 Pay Now
+                      </button>
+                    )}
+                    {canJoin && (
+                      <button
+                        onClick={() => navigate(`/patient/video/${appt.id}`)}
+                        style={{ fontSize: 12, color: '#fff', background: 'var(--primary)', border: 'none', borderRadius: 6, padding: '6px 14px', cursor: 'pointer', fontWeight: 700 }}
+                      >
+                        🎥 Join Call
+                      </button>
+                    )}
                     {canCancel && (
                       <button
                         onClick={() => cancelAppointment(appt.id)}

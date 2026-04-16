@@ -13,11 +13,13 @@ interface Appointment {
 }
 
 const STATUS_CFG: Record<string, { bg: string; color: string; label: string }> = {
-  PENDING:   { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
-  CONFIRMED: { bg: '#DBEAFE', color: '#1E40AF', label: 'Confirmed' },
-  COMPLETED: { bg: '#ECFDF5', color: '#065F46', label: 'Completed' },
-  CANCELLED: { bg: '#F1F5F9', color: '#64748B', label: 'Cancelled' },
-  REJECTED:  { bg: '#FEE2E2', color: '#991B1B', label: 'Rejected' },
+  PENDING:     { bg: '#FEF3C7', color: '#92400E', label: 'Pending' },
+  CONFIRMED:   { bg: '#DBEAFE', color: '#1E40AF', label: 'Confirmed' },
+  PAID:        { bg: '#EDE9FE', color: '#4C1D95', label: 'Paid' },
+  IN_PROGRESS: { bg: '#F0FDF4', color: '#14532D', label: 'In Progress' },
+  COMPLETED:   { bg: '#ECFDF5', color: '#065F46', label: 'Completed' },
+  CANCELLED:   { bg: '#F1F5F9', color: '#64748B', label: 'Cancelled' },
+  REJECTED:    { bg: '#FEE2E2', color: '#991B1B', label: 'Rejected' },
 };
 
 export default function DoctorAppointments() {
@@ -96,10 +98,10 @@ export default function DoctorAppointments() {
                       </>
                     )}
                     {appt.status === 'CONFIRMED' && (
-                      <>
-                        <button onClick={() => navigate(`/doctor/video/${appt.id}`)} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>🎥 Start Consultation</button>
-                        <button onClick={() => updateStatus(appt.id, 'complete')} style={{ padding: '7px 16px', borderRadius: 8, background: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>✓ Mark Complete</button>
-                      </>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '7px 0' }}>Waiting for patient payment…</span>
+                    )}
+                    {(appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
+                      <button onClick={() => navigate(`/doctor/video/${appt.id}`)} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>🎥 Start Consultation</button>
                     )}
                   </div>
                 </div>

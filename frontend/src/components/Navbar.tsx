@@ -14,6 +14,9 @@ const ICONS: Record<string, ReactElement> = {
   edit: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"/></svg>,
   users: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
   verify: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/></svg>,
+  profile: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M20 21a8 8 0 10-16 0" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  report: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+  schedule: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
 
 const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
@@ -23,11 +26,15 @@ const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
     { label: 'Appointments', href: '/patient/appointments', icon: 'calendar' },
     { label: 'AI Checker', href: '/patient/symptom-checker', icon: 'ai' },
     { label: 'Prescriptions', href: '/patient/prescriptions', icon: 'pill' },
+    { label: 'Reports', href: '/patient/reports', icon: 'report' },
+    { label: 'Profile', href: '/patient/profile', icon: 'profile' },
   ],
   doctor: [
     { label: 'Dashboard', href: '/doctor/dashboard', icon: 'dashboard' },
     { label: 'Appointments', href: '/doctor/appointments', icon: 'clipboard' },
+    { label: 'Schedule', href: '/doctor/schedule', icon: 'schedule' },
     { label: 'Prescriptions', href: '/doctor/prescriptions', icon: 'edit' },
+    { label: 'Profile', href: '/doctor/profile', icon: 'profile' },
   ],
   admin: [
     { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
@@ -72,7 +79,7 @@ export default function Navbar() {
           height: 60, display: 'flex', alignItems: 'center', gap: 8,
         }}>
           {/* Brand */}
-          <Link to={user ? `/${user.role}/dashboard` : '/login'} style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginRight: 32, flexShrink: 0 }}>
+          <Link to={user ? `/${user.role}/dashboard` : '/login'} style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', marginRight: 16, flexShrink: 0 }}>
             <div style={{ width: 32, height: 32, borderRadius: 10, background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#fff" opacity="0.9"/><path d="M2 17l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 12l10 5 10-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
@@ -82,18 +89,18 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1, justifyContent: 'center', overflow: 'hidden' }} className="hidden-mobile">
+          <nav style={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center', overflow: 'hidden', minWidth: 0 }} className="hidden-mobile">
             {links.map((l) => {
               const active = location.pathname === l.href;
               return (
                 <Link key={l.href} to={l.href} style={{
-                  display: 'flex', alignItems: 'center', gap: 7,
-                  padding: '7px 16px', borderRadius: 10, textDecoration: 'none',
-                  fontSize: 13.5, fontWeight: active ? 600 : 500,
+                  display: 'flex', alignItems: 'center', gap: 5,
+                  padding: '6px 11px', borderRadius: 8, textDecoration: 'none',
+                  fontSize: 12.5, fontWeight: active ? 600 : 500,
                   color: active ? 'var(--primary-dark)' : 'var(--text-secondary)',
                   background: active ? 'var(--primary-50)' : 'transparent',
                   transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', whiteSpace: 'nowrap',
-                  letterSpacing: '-0.1px',
+                  letterSpacing: '-0.1px', flexShrink: 0,
                 }}>
                   <span style={{ display: 'flex', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[l.icon]}</span>
                   {l.label}
@@ -103,7 +110,7 @@ export default function Navbar() {
           </nav>
 
           {/* Right side */}
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             {user && badge && (
               <>
                 {/* Role badge — pill style like Medico */}
