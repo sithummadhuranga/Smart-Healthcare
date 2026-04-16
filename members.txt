@@ -12,11 +12,11 @@ Member 1 — Infrastructure Lead + API Gateway + Auth Service + Patient Service
   Email              : it23294066@my.sliit.lk
 
 Member 2 — Doctor Service + Appointment Service + Admin APIs
-  Name               : [REPLACE WITH FULL NAME]
-  Registration No.   : [REPLACE WITH REG NO]
-  Student ID         : [REPLACE WITH STUDENT ID]
-  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
-  Email              : [REPLACE WITH EMAIL]
+  Name               : G.S.R.Nanayakkara
+  Registration No.   : IT23343702
+  Student ID         : IT23343702
+  GitHub Username    : sathufit
+  Email              : it23343702@my.sliit.lk
 
 Member 3 — Telemedicine Service + Payment Service + Notification Service
   Name               : [REPLACE WITH FULL NAME]
