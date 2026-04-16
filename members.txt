@@ -19,11 +19,11 @@ Member 2 — Doctor Service + Appointment Service + Admin APIs
   Email              : it23343702@my.sliit.lk
 
 Member 3 — Telemedicine Service + Payment Service + Notification Service
-  Name               : [REPLACE WITH FULL NAME]
-  Registration No.   : [REPLACE WITH REG NO]
-  Student ID         : [REPLACE WITH STUDENT ID]
-  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
-  Email              : [REPLACE WITH EMAIL]
+  Name               : W.C.S.A.Lowe
+  Registration No.   : IT23227354
+  Student ID         : IT23227354
+  GitHub Username    : christineshwethalowe
+  Email              : it23227354@my.sliit.lk
 
 Member 4 — React Frontend + AI Symptom Checker Service
   Name               : [REPLACE WITH FULL NAME]
