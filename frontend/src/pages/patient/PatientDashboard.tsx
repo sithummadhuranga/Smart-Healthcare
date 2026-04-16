@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import Navbar from '../../components/Navbar';
-import { getCurrentUser } from '../../api';
 
 /* ─── Service card icons (clean SVGs) ───────────────────────── */
 const CARD_ICONS: Record<string, ReactElement> = {
@@ -42,75 +41,60 @@ const CARDS = [
   },
 ];
 
-function getTimeOfDay() {
-  const h = new Date().getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
 export default function PatientDashboard() {
   const navigate = useNavigate();
-  const user = getCurrentUser();
 
   return (
     <div style={{ minHeight: '100vh', background: '#fff' }}>
       <Navbar />
 
-      {/* ═══════ Hero — Modern 2026 white-bg spread layout ═══════ */}
+      {/* ═══════ Hero — Full-width split layout with large doctor image ═══════ */}
       <section style={{
         position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(180deg, #fff 0%, var(--primary-50) 100%)',
-        padding: '48px 24px 0',
+        background: '#fff',
+        minHeight: 560,
       }}>
+        {/* Soft abstract shapes in background */}
+        <div style={{ position: 'absolute', top: -100, right: -100, width: 600, height: 600, background: 'rgba(20, 184, 166, 0.05)', borderRadius: '50%', filter: 'blur(80px)' }} />
+        <div style={{ position: 'absolute', bottom: -50, left: -50, width: 400, height: 400, background: 'rgba(13, 148, 136, 0.05)', borderRadius: '50%', filter: 'blur(60px)' }} />
         {/* Subtle grid pattern */}
-        <div style={{ position: 'absolute', inset: 0, opacity: 0.3, backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
-        <div style={{ maxWidth: 1100, margin: '0 auto', position: 'relative', zIndex: 2 }}>
-          {/* Top pill badge */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-            <span style={{
-              background: 'var(--primary-light)', color: 'var(--primary-dark)',
-              padding: '8px 20px', borderRadius: 24,
-              fontSize: 13, fontWeight: 600, letterSpacing: '0.3px',
-              display: 'inline-flex', alignItems: 'center', gap: 6,
+        <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', minHeight: 560 }}>
+          {/* Left text — takes 55% */}
+          <div style={{ flex: '1 1 55%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 20px 40px 40px', minWidth: 0, marginTop: 40 }}>
+            <div style={{
+              background: 'var(--primary-50)', color: 'var(--primary-dark)',
+              display: 'inline-flex', padding: '6px 16px', borderRadius: 20, marginBottom: 20, alignItems: 'center', gap: 6, width: 'fit-content',
             }}>
-              <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/><path d="M22 4L12 14.01l-3-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              Trusted by 50,000+ patients worldwide
-            </span>
-          </div>
+              <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"/><path d="M22 4L12 14.01l-3-3" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.5px' }}>Top Healthcare Platform</span>
+            </div>
 
-          {/* Main heading — centered, large, modern */}
-          <div style={{ textAlign: 'center', maxWidth: 720, margin: '0 auto', marginBottom: 32 }}>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 15, marginBottom: 12, fontWeight: 500 }}>
-              {getTimeOfDay()}, {user?.name ?? 'Patient'}
-            </p>
             <h1 style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 48, fontWeight: 800, color: 'var(--text-primary)',
-              lineHeight: 1.12, letterSpacing: '-1px', marginBottom: 20,
+              fontSize: 52, fontWeight: 800, color: 'var(--text-primary)',
+              lineHeight: 1.1, letterSpacing: '-1.5px', marginBottom: 20,
             }}>
-              Discover the{' '}
-              <span style={{ color: 'var(--primary)' }}>Comprehensive Care</span>
-              {' '}You Deserve
+              Find the right doctor <span style={{ display: 'block', color: 'var(--primary)' }}>right at your fingertips</span>
             </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: 16, lineHeight: 1.7, maxWidth: 540, margin: '0 auto 32px', fontWeight: 400 }}>
-              Book appointments, get AI-powered health recommendations, manage prescriptions — your complete healthcare platform.
+            <p style={{ color: 'var(--text-secondary)', fontSize: 17, lineHeight: 1.7, maxWidth: 500, marginBottom: 32, fontWeight: 400 }}>
+              Book appointments with top-rated specialists, chat with our AI symptom checker, and manage your health seamlessly.
             </p>
 
-            {/* CTA buttons — pill style */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 40 }}>
               <button
                 onClick={() => navigate('/patient/doctors')}
                 style={{
-                  padding: '14px 32px', borderRadius: 50,
-                  background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-                  color: '#fff', border: 'none',
-                  fontSize: 15, fontWeight: 600,
-                  cursor: 'pointer',
-                  boxShadow: 'var(--shadow-teal)',
+                  padding: '16px 36px', borderRadius: 50,
+                  background: 'var(--primary)', color: '#fff',
+                  border: 'none', fontSize: 15, fontWeight: 700,
+                  cursor: 'pointer', boxShadow: '0 8px 24px rgba(20, 184, 166, 0.25)',
                   display: 'flex', alignItems: 'center', gap: 8,
+                  transition: 'all 0.2s',
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
               >
                 Find a Doctor
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -118,85 +102,92 @@ export default function PatientDashboard() {
               <button
                 onClick={() => navigate('/patient/symptom-checker')}
                 style={{
-                  padding: '14px 32px', borderRadius: 50,
-                  background: 'transparent',
-                  color: 'var(--text-primary)', border: '2px solid var(--border)',
-                  fontSize: 15, fontWeight: 600,
-                  cursor: 'pointer',
+                  padding: '16px 36px', borderRadius: 50,
+                  background: '#fff',
+                  color: 'var(--text-primary)', border: '1px solid var(--border)',
+                  fontSize: 15, fontWeight: 600, cursor: 'pointer',
                   display: 'flex', alignItems: 'center', gap: 8,
+                  boxShadow: 'var(--shadow-sm)',
+                  transition: 'all 0.2s',
                 }}
+                onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+                onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
               >
                 AI Symptom Check
               </button>
             </div>
-          </div>
 
-          {/* Hero image with floating badges */}
-          <div style={{ position: 'relative', maxWidth: 800, margin: '0 auto', marginTop: 16 }}>
-            {/* Floating badge — top left */}
-            <div className="hidden-mobile animate-float" style={{
-              position: 'absolute', top: 20, left: -20,
-              background: '#fff', borderRadius: 16, padding: '12px 18px',
-              boxShadow: 'var(--shadow-lg)', zIndex: 3,
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--primary-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="var(--primary)" strokeWidth="2" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="var(--primary)" strokeWidth="2"/></svg>
-              </div>
-              <div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.3px' }}>50K+</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>Active Users</div>
-              </div>
-            </div>
-
-            {/* Floating badge — top right */}
-            <div className="hidden-mobile animate-float" style={{
-              position: 'absolute', top: 30, right: -10,
-              background: '#fff', borderRadius: 16, padding: '12px 18px',
-              boxShadow: 'var(--shadow-lg)', zIndex: 3,
-              display: 'flex', alignItems: 'center', gap: 8,
-              animationDelay: '1s',
-            }}>
-              <div style={{ display: 'flex', gap: 2 }}>
-                {[1,2,3,4,5].map(i => (
-                  <svg key={i} width="14" height="14" viewBox="0 0 24 24" fill="#F59E0B"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.27 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"/></svg>
+            {/* User Avatars / Social Proof */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ display: 'flex', marginLeft: 10 }}>
+                {['#cbd5e1', '#94a3b8', '#64748b', '#475569'].map((bg, i) => (
+                  <div key={i} style={{
+                    width: 38, height: 38, borderRadius: '50%', background: bg,
+                    border: '2px solid #fff', marginLeft: -12,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#fff', fontSize: 12, fontWeight: 600,
+                  }}>
+                    {i === 3 ? '+2k' : ''}
+                  </div>
                 ))}
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>4.9</span>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 2 }}>
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <svg key={s} width="14" height="14" fill="#FBBF24" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                  ))}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 500 }}>
+                  <strong style={{ color: 'var(--text-primary)' }}>4.9/5</strong> from 50,000+ patients
+                </div>
+              </div>
             </div>
+          </div>
 
-            {/* Floating badge — bottom left */}
-            <div className="hidden-mobile animate-float" style={{
-              position: 'absolute', bottom: 60, left: -30,
-              background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)',
-              borderRadius: 14, padding: '14px 20px',
-              boxShadow: 'var(--shadow-teal)', zIndex: 3,
-              animationDelay: '0.5s',
-            }}>
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', fontWeight: 500, marginBottom: 2 }}>Specialist Available</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: '#fff' }}>Book Now</div>
-            </div>
-
+          {/* Right — Large hero doctors image */}
+          <div className="hidden-mobile" style={{
+            flex: '1 1 45%', position: 'relative', minWidth: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'
+          }}>
+            {/* Decorative background shape for the image */}
+            <div style={{ position: 'absolute', right: '5%', bottom: '5%', width: '80%', height: '80%', background: 'linear-gradient(180deg, var(--primary-100) 0%, rgba(255,255,255,0) 100%)', borderRadius: '40px 40px 0 0', zIndex: 1, borderTop: '1px solid var(--border)' }} />
+            
             {/* Hero image */}
-            <div style={{
-              borderRadius: '24px 24px 0 0', overflow: 'hidden',
-              background: 'linear-gradient(180deg, transparent 0%, var(--primary-50) 100%)',
-              position: 'relative',
-            }}>
-              <img
-                src="/hero-doctors.svg"
-                alt="Healthcare professionals"
-                style={{
-                  width: '100%', height: 'auto', maxHeight: 420,
-                  objectFit: 'cover', objectPosition: 'center top',
-                  display: 'block',
-                }}
-              />
-              {/* Fade at bottom */}
-              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 80, background: 'linear-gradient(transparent, var(--bg))' }} />
+            <img
+              src="/hero-doctors.svg"
+              alt="Healthcare professionals"
+              style={{
+                width: '100%', maxWidth: 500, height: '100%', maxHeight: 600,
+                objectFit: 'contain', objectPosition: 'bottom center',
+                position: 'relative', zIndex: 2,
+                marginTop: 40,
+              }}
+            />
+            
+            {/* Floating Elements / Cards like the screenshot */}
+            <div className="animate-float" style={{ position: 'absolute', top: '15%', left: '0%', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 16, padding: '12px 16px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 12, zIndex: 3, border: '1px solid rgba(255,255,255,0.5)' }}>
+               <div style={{ width: 40, height: 40, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+               </div>
+               <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>15 mins</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Avg. wait time</div>
+               </div>
+            </div>
+
+            <div className="animate-float" style={{ position: 'absolute', bottom: '20%', right: '-5%', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 16, padding: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 8, zIndex: 3, border: '1px solid rgba(255,255,255,0.5)', animationDelay: '1.5s' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Verified Pros</div>
+              </div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>200+</div>
             </div>
           </div>
         </div>
+
+        {/* Removed Wave separator to match a clean modern layout */}
       </section>
 
       {/* ═══════ Services Section — Modern Cards ═══════ */}

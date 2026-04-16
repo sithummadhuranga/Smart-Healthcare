@@ -15,11 +15,20 @@ const PORT = Number(process.env.PATIENT_SERVICE_PORT) || 3002;
 const SERVICE_NAME = 'patient-service';
 
 // Validate required env vars
-['MONGODB_URI', 'JWT_SECRET', 'CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].forEach(
+['MONGODB_URI', 'JWT_SECRET'].forEach(
   (key) => {
     if (!process.env[key]) {
       logger.error(`Missing required environment variable: ${key}`);
       process.exit(1);
+    }
+  },
+);
+
+// Warn about optional env vars
+['CLOUDINARY_CLOUD_NAME', 'CLOUDINARY_API_KEY', 'CLOUDINARY_API_SECRET'].forEach(
+  (key) => {
+    if (!process.env[key]) {
+      logger.warn(`Optional environment variable not set: ${key} — file uploads will be unavailable`);
     }
   },
 );

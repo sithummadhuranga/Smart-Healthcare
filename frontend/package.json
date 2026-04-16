@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@stripe/react-stripe-js": "^6.2.0",
+    "@stripe/stripe-js": "^9.2.0",
+    "agora-rtc-sdk-ng": "^4.24.3",
     "axios": "^1.15.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

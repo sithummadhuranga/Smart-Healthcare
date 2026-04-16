@@ -45,7 +45,7 @@ export default function LoginPage() {
           position: 'relative',
           overflow: 'hidden',
           background: 'linear-gradient(160deg, #0D9488 0%, #14B8A6 40%, #2DD4BF 100%)',
-          padding: '40px 48px 0',
+          padding: '40px 48px',
         }}
       >
         {/* Decorative elements */}
@@ -61,7 +61,7 @@ export default function LoginPage() {
         </div>
 
         {/* Content */}
-        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 380 }}>
+        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', maxWidth: 420 }}>
           <div style={{ background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)', display: 'inline-flex', padding: '6px 16px', borderRadius: 20, marginBottom: 24, width: 'fit-content' }}>
             <span style={{ color: '#fff', fontSize: 12, fontWeight: 600, letterSpacing: '0.5px' }}>TRUSTED HEALTHCARE PLATFORM</span>
           </div>
@@ -72,7 +72,7 @@ export default function LoginPage() {
           }}>
             Your Health,{'\n'}Our Priority
           </h1>
-          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.7, marginBottom: 32, fontWeight: 400 }}>
+          <p style={{ color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 1.7, marginBottom: 36, fontWeight: 400 }}>
             Access world-class healthcare services, connect with expert doctors, and manage your wellness journey — all from one platform.
           </p>
 
@@ -91,15 +91,19 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Hero image — properly layered behind text */}
+        {/* Hero doctors image — subtle behind the text */}
         <div style={{
-          position: 'absolute', right: 0, bottom: 0, width: '50%', height: '55%',
-          zIndex: 1, opacity: 0.15, pointerEvents: 'none',
+          position: 'absolute', right: 0, bottom: 0,
+          width: '100%', height: '65%',
+          zIndex: 1, opacity: 0.12, pointerEvents: 'none',
         }}>
           <img
             src="/hero-doctors.svg"
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center top' }}
+            style={{
+              width: '100%', height: '100%',
+              objectFit: 'contain', objectPosition: 'bottom right',
+            }}
           />
         </div>
       </div>
