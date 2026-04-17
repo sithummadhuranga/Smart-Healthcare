@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { IncomingMessage } from 'http';
 import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -22,6 +23,21 @@ app.use(helmet());
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost')
   .split(',')
   .map((o) => o.trim());
+
+const upstreamCorsHeaders = [
+  'access-control-allow-origin',
+  'access-control-allow-credentials',
+  'access-control-allow-methods',
+  'access-control-allow-headers',
+  'access-control-expose-headers',
+  'access-control-max-age',
+];
+
+function stripUpstreamCorsHeaders(proxyRes: IncomingMessage): void {
+  for (const header of upstreamCorsHeaders) {
+    delete proxyRes.headers[header];
+  }
+}
 
 app.use(
   cors({
@@ -229,6 +245,9 @@ function proxy(target: string | undefined, pathPrefix: string): express.RequestH
     // Without this, Express mount paths strip prefixes and upstream routes return 404.
     pathRewrite: (_path, req) => (req as Request).originalUrl,
     on: {
+      proxyRes: (proxyRes) => {
+        stripUpstreamCorsHeaders(proxyRes);
+      },
       error: (err, _req, res) => {
         logger.error(`Proxy error → ${target}: ${(err as Error).message}`);
         (res as Response).status(502).json({ error: 'Upstream service unavailable' });
