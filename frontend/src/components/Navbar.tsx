@@ -40,6 +40,7 @@ const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
     { label: 'Dashboard', href: '/admin/dashboard', icon: 'dashboard' },
     { label: 'Users', href: '/admin/users', icon: 'users' },
     { label: 'Verify Doctors', href: '/admin/doctors', icon: 'verify' },
+    { label: 'Appointments', href: '/admin/appointments', icon: 'calendar' },
   ],
 };
 

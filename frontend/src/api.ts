@@ -1,7 +1,10 @@
 import axios from 'axios';
 
+const runtimeDefaultApiUrl = `${window.location.protocol}//${window.location.hostname}:3000`;
+const apiBaseUrl = import.meta.env.VITE_API_URL || runtimeDefaultApiUrl;
+
 const api = axios.create({
-  baseURL: 'http://localhost:3000',
+  baseURL: apiBaseUrl,
   withCredentials: true,
 });
 

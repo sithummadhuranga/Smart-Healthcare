@@ -6,7 +6,7 @@ import api from '../../api';
 import Navbar from '../../components/Navbar';
 import Toast from '../../components/Toast';
 
-const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '';
+const STRIPE_PK = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || import.meta.env.STRIPE_PUBLISHABLE_KEY || '';
 const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
 interface PaymentData {
@@ -19,7 +19,7 @@ interface PaymentData {
 function CheckoutForm({ appointmentId, paymentData, onSuccess, onError }: {
   appointmentId: string;
   paymentData: PaymentData;
-  onSuccess: () => void;
+  onSuccess: () => Promise<void> | void;
   onError: (msg: string) => void;
 }) {
   const stripe = useStripe();
@@ -41,7 +41,8 @@ function CheckoutForm({ appointmentId, paymentData, onSuccess, onError }: {
       onError(error.message ?? 'Payment failed');
       setProcessing(false);
     } else if (paymentIntent?.status === 'succeeded') {
-      onSuccess();
+      await onSuccess();
+      setProcessing(false);
     } else {
       onError('Payment processing. Please wait...');
       setProcessing(false);
@@ -103,6 +104,7 @@ export default function PaymentPage() {
   const [loading, setLoading] = useState(true);
   const [paid, setPaid] = useState(false);
   const [alreadyPaid, setAlreadyPaid] = useState(false);
+  const [initError, setInitError] = useState<string | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -131,8 +133,10 @@ export default function PaymentPage() {
         currency: data.currency || 'usd',
         paymentId: data.paymentId,
       });
+      setInitError(null);
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to initialize payment.';
+      setInitError(msg);
       setToast({ message: msg, type: 'error' });
     } finally {
       setLoading(false);
@@ -146,7 +150,7 @@ export default function PaymentPage() {
         <div style={{ maxWidth: 560, margin: '80px auto', padding: 24, textAlign: 'center' }}>
           <div style={{ fontSize: 48, marginBottom: 16 }}>⚙️</div>
           <h2 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>Payment Not Configured</h2>
-          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Stripe publishable key is not set. Please configure <code>VITE_STRIPE_PUBLISHABLE_KEY</code> in the environment.</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary)' }}>Stripe publishable key is not set. Please configure <code>STRIPE_PUBLISHABLE_KEY</code> in the environment.</p>
           <button onClick={() => navigate('/patient/appointments')} style={{ marginTop: 20, padding: '10px 24px', borderRadius: 9, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
             Back to Appointments
           </button>
@@ -197,14 +201,23 @@ export default function PaymentPage() {
               <CheckoutForm
                 appointmentId={appointmentId!}
                 paymentData={paymentData}
-                onSuccess={() => setPaid(true)}
+                onSuccess={async () => {
+                  try {
+                    await api.get(`/api/payments/${appointmentId!}`);
+                  } catch {
+                    // Webhook may still be processing; success UI is shown regardless.
+                  }
+                  setPaid(true);
+                }}
                 onError={(msg) => setToast({ message: msg, type: 'error' })}
               />
             </Elements>
           </div>
         ) : (
           <div style={{ background: '#FEF2F2', border: '1.5px solid #FECACA', borderRadius: 12, padding: '20px', textAlign: 'center' }}>
-            <p style={{ color: '#991B1B', fontSize: 13, margin: '0 0 12px' }}>Unable to initialize payment. The appointment may not be in CONFIRMED status.</p>
+            <p style={{ color: '#991B1B', fontSize: 13, margin: '0 0 12px' }}>
+              {initError || 'Unable to initialize payment. The appointment may not be in CONFIRMED status.'}
+            </p>
             <button onClick={() => navigate('/patient/appointments')} style={{ padding: '10px 24px', borderRadius: 9, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}>
               Back to Appointments
             </button>

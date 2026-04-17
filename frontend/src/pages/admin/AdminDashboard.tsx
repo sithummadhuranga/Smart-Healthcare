@@ -10,25 +10,79 @@ interface Stats {
   totalAppointments: number;
 }
 
+interface ServiceStatus {
+  name: string;
+  status: boolean;
+}
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalDoctors: 0, pendingVerifications: 0, totalAppointments: 0 });
   const [loading, setLoading] = useState(true);
+  const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([
+    { name: 'Auth Service', status: false },
+    { name: 'Patient Service', status: false },
+    { name: 'Doctor Service', status: false },
+    { name: 'Appointment Service', status: false },
+    { name: 'Telemedicine Service', status: false },
+    { name: 'Payment Service', status: false },
+    { name: 'Notification Service', status: false },
+    { name: 'AI Symptom Service', status: false },
+  ]);
 
   useEffect(() => {
     Promise.all([
       api.get('/api/auth/users').catch(() => ({ data: { users: [] } })),
-      api.get('/api/doctors').catch(() => ({ data: [] })),
-      api.get('/api/doctors/pending').catch(() => ({ data: [] })),
       api.get('/api/appointments').catch(() => ({ data: [] })),
-    ]).then(([users, doctors, pending, appointments]) => {
+      api.get('/api/auth/health').then(() => true).catch(() => false),
+      api.get('/api/patients/health').then(() => true).catch(() => false),
+      api.get('/api/doctors/health').then(() => true).catch(() => false),
+      api.get('/api/appointments/health').then(() => true).catch(() => false),
+      api.get('/api/telemedicine/health').then(() => true).catch(() => false),
+      api.get('/api/payments/health').then(() => true).catch(() => false),
+      api.get('/api/notifications/health').then(() => true).catch(() => false),
+      api.get('/api/ai/health').then(() => true).catch(() => false),
+    ]).then(([
+      users,
+      appointments,
+      authUp,
+      patientUp,
+      doctorUp,
+      appointmentUp,
+      telemedicineUp,
+      paymentUp,
+      notificationUp,
+      aiUp,
+    ]) => {
       const userList = (users.data as { users?: unknown[] }).users ?? [];
+      const doctorUsers = Array.isArray(userList)
+        ? userList.filter((u) => {
+            const user = u as { role?: string; isVerified?: boolean; isActive?: boolean };
+            return user.role === 'doctor' && user.isActive;
+          })
+        : [];
+
+      const pendingDoctors = doctorUsers.filter((u) => {
+        const user = u as { isVerified?: boolean };
+        return !user.isVerified;
+      });
+
       setStats({
         totalUsers: Array.isArray(userList) ? userList.length : 0,
-        totalDoctors: Array.isArray(doctors.data) ? doctors.data.length : 0,
-        pendingVerifications: Array.isArray(pending.data) ? pending.data.length : 0,
+        totalDoctors: doctorUsers.length,
+        pendingVerifications: pendingDoctors.length,
         totalAppointments: Array.isArray(appointments.data) ? appointments.data.length : 0,
       });
+      setServiceStatuses([
+        { name: 'Auth Service', status: Boolean(authUp) },
+        { name: 'Patient Service', status: Boolean(patientUp) },
+        { name: 'Doctor Service', status: Boolean(doctorUp) },
+        { name: 'Appointment Service', status: Boolean(appointmentUp) },
+        { name: 'Telemedicine Service', status: Boolean(telemedicineUp) },
+        { name: 'Payment Service', status: Boolean(paymentUp) },
+        { name: 'Notification Service', status: Boolean(notificationUp) },
+        { name: 'AI Symptom Service', status: Boolean(aiUp) },
+      ]);
     }).finally(() => setLoading(false));
   }, []);
 
@@ -73,6 +127,13 @@ export default function AdminDashboard() {
       path: '/admin/doctors',
       icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/></svg>,
       bg: '#fff', color: 'var(--text-primary)', iconBg: '#FFFBEB',
+    },
+    {
+      label: 'Manage Appointments',
+      desc: 'Track all appointments platform-wide with admin visibility',
+      path: '/admin/appointments',
+      icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+      bg: '#fff', color: 'var(--text-primary)', iconBg: '#EFF6FF',
     },
   ];
 
@@ -151,14 +212,7 @@ export default function AdminDashboard() {
         <div style={{ marginTop: 32, background: '#fff', borderRadius: 16, border: '1px solid var(--border)', padding: '24px', boxShadow: 'var(--shadow-sm)' }}>
           <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-secondary)', letterSpacing: '0.5px', textTransform: 'uppercase', marginBottom: 16 }}>System Status</h3>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(180px,1fr))', gap: 12 }}>
-            {[
-              { name: 'Auth Service', status: true },
-              { name: 'Patient Service', status: true },
-              { name: 'Doctor Service', status: true },
-              { name: 'Appointment Service', status: true },
-              { name: 'Payment Service', status: true },
-              { name: 'AI Symptom Service', status: true },
-            ].map((svc) => (
+            {serviceStatuses.map((svc) => (
               <div key={svc.name} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'var(--bg)' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: svc.status ? '#10B981' : '#EF4444', flexShrink: 0 }} />
                 <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text-primary)' }}>{svc.name}</span>

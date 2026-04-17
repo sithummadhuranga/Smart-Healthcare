@@ -12,8 +12,24 @@ const PORT = Number(process.env.DOCTOR_SERVICE_PORT) || 3003;
 const SERVICE_NAME = 'doctor-service';
 const MONGODB_URI = process.env.DOCTOR_MONGODB_URI || 'mongodb://localhost:27017/doctordb';
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
 
 // ── Swagger API Docs ────────────────────────────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

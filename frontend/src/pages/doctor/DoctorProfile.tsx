@@ -46,7 +46,18 @@ export default function DoctorProfile() {
       setProfile(p);
       populateForm(p);
     } catch {
-      if (user) setProfile({ _id: '', userId: user.userId, name: user.name, email: user.email, qualifications: [], isVerified: false });
+      if (user) {
+        setProfile({
+          _id: '',
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          qualifications: [],
+          // Logged-in doctors are verified by auth-service; avoid false "pending" state on transient failures.
+          isVerified: true,
+        });
+      }
+      setToast({ message: 'Unable to refresh profile details. Showing basic account info.', type: 'error' });
     } finally {
       setLoading(false);
     }

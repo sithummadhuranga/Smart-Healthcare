@@ -39,6 +39,30 @@ export default function VideoRoom() {
     return () => { cleanup(); };
   }, [roomId]);
 
+  function resolveJoinErrorMessage(err: unknown): string {
+    const apiMsg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    if (apiMsg) {
+      return apiMsg;
+    }
+
+    const text = err instanceof Error ? err.message : String(err ?? '');
+    if (/^Network Error$/i.test(text)) {
+      return 'Cannot reach backend services. Ensure API Gateway is running on port 3000 and refresh the page.';
+    }
+    if (/NotAllowedError|Permission denied|permission/i.test(text)) {
+      return 'Camera or microphone permission was denied. Allow access in your browser site settings and retry.';
+    }
+    if (/NotFoundError|DevicesNotFoundError|device not found|Requested device not found/i.test(text)) {
+      return 'No camera or microphone device was found. Connect a device and try again.';
+    }
+
+    if (text && text.trim().length > 0) {
+      return text;
+    }
+
+    return 'Failed to join video call. Please check your camera and microphone permissions.';
+  }
+
   async function joinChannel() {
     try {
       // Get Agora token from backend
@@ -76,19 +100,46 @@ export default function VideoRoom() {
 
       await client.join(appId, channelName, token, uid);
 
-      const [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      // Join channel first, then publish whichever local tracks are available.
+      let audioTrack: IMicrophoneAudioTrack | null = null;
+      let videoTrack: ICameraVideoTrack | null = null;
+
+      try {
+        [audioTrack, videoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+      } catch (mediaError) {
+        try {
+          audioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        } catch {
+          audioTrack = null;
+        }
+
+        try {
+          videoTrack = await AgoraRTC.createCameraVideoTrack();
+        } catch {
+          videoTrack = null;
+        }
+
+        setToast({
+          message: resolveJoinErrorMessage(mediaError),
+          type: 'error',
+        });
+      }
+
       localTracksRef.current = { audio: audioTrack, video: videoTrack };
 
-      if (localVideoRef.current) {
+      if (videoTrack && localVideoRef.current) {
         videoTrack.play(localVideoRef.current);
       }
 
-      await client.publish([audioTrack, videoTrack]);
+      const tracksToPublish = [audioTrack, videoTrack].filter((t): t is IMicrophoneAudioTrack | ICameraVideoTrack => Boolean(t));
+      if (tracksToPublish.length > 0) {
+        await client.publish(tracksToPublish);
+      }
+
       setJoined(true);
     } catch (err: unknown) {
       console.error('Failed to join video call:', err);
-      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
-      setError(msg ?? 'Failed to join video call. Please check your camera and microphone permissions.');
+      setError(resolveJoinErrorMessage(err));
     } finally {
       setJoining(false);
     }

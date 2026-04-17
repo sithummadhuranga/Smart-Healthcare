@@ -17,6 +17,8 @@ export default function ManageSchedule() {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [savingFee, setSavingFee] = useState(false);
+  const [consultationFee, setConsultationFee] = useState('');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // New slot form
@@ -28,12 +30,43 @@ export default function ManageSchedule() {
 
   async function fetchSchedule() {
     try {
-      const { data } = await api.get('/api/doctors/schedule');
-      setSlots(Array.isArray(data) ? data : data.schedule ?? []);
+      const [scheduleResponse, profileResponse] = await Promise.all([
+        api.get('/api/doctors/schedule'),
+        api.get('/api/doctors/profile'),
+      ]);
+
+      const scheduleData = scheduleResponse.data;
+      setSlots(Array.isArray(scheduleData) ? scheduleData : scheduleData.schedule ?? []);
+
+      const fee = profileResponse.data?.consultationFee;
+      if (typeof fee === 'number' && Number.isFinite(fee)) {
+        setConsultationFee(String(fee));
+      }
     } catch {
       setToast({ message: 'Failed to load schedule.', type: 'error' });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveConsultationFee(e: FormEvent) {
+    e.preventDefault();
+    const parsed = Number(consultationFee);
+
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setToast({ message: 'Please enter a valid non-negative consultation fee.', type: 'error' });
+      return;
+    }
+
+    setSavingFee(true);
+    try {
+      await api.put('/api/doctors/profile', { consultationFee: parsed });
+      setToast({ message: 'Consultation fee updated.', type: 'success' });
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to update consultation fee.';
+      setToast({ message: msg, type: 'error' });
+    } finally {
+      setSavingFee(false);
     }
   }
 
@@ -99,6 +132,25 @@ export default function ManageSchedule() {
       </div>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '28px 24px' }}>
+        <form onSubmit={saveConsultationFee} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)', marginBottom: 16, display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 220px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Consultation Fee (USD)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value={consultationFee}
+              onChange={(e) => setConsultationFee(e.target.value)}
+              placeholder="25.00"
+              style={inputStyle}
+            />
+          </div>
+          <button type="submit" disabled={savingFee} style={{ padding: '10px 20px', borderRadius: 8, background: savingFee ? 'var(--border)' : 'var(--primary)', color: '#fff', border: 'none', cursor: savingFee ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
+            {savingFee ? 'Saving…' : 'Save Fee'}
+          </button>
+        </form>
+
         {/* Add slot form */}
         <form onSubmit={addSlot} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 20, boxShadow: 'var(--shadow-sm)', marginBottom: 24, display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap' }}>
           <div style={{ flex: '1 1 160px' }}>

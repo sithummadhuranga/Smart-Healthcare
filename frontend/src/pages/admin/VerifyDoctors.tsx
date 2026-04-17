@@ -8,9 +8,13 @@ interface Doctor {
   _id: string;
   name: string;
   email: string;
-  specialty: string;
-  qualifications: string[];
+  role: 'doctor';
+  isActive: boolean;
   isVerified: boolean;
+}
+
+interface UsersResponse {
+  users?: Doctor[];
 }
 
 export default function VerifyDoctors() {
@@ -19,16 +23,32 @@ export default function VerifyDoctors() {
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  async function fetchPendingDoctors() {
+    setLoading(true);
+    try {
+      const { data } = await api.get<UsersResponse>('/api/auth/users', {
+        params: { role: 'doctor', limit: 100 },
+      });
+      const allDoctors = Array.isArray(data?.users) ? data.users : [];
+      setDoctors(allDoctors.filter((doc) => !doc.isVerified && doc.isActive));
+    } catch {
+      setToast({ message: 'Failed to load pending doctors.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    api.get('/api/doctors/pending')
-      .then(({ data }) => setDoctors(Array.isArray(data) ? data : []))
-      .catch(() => setToast({ message: 'Failed to load pending doctors.', type: 'error' }))
-      .finally(() => setLoading(false));
+    void fetchPendingDoctors();
   }, []);
 
   async function verifyDoctor(id: string, verified: boolean) {
     try {
-      await api.patch(`/api/doctors/${id}/verify`, { verified, reason: verified ? 'Credentials verified by admin' : 'Verification rejected' });
+      if (verified) {
+        await api.patch(`/api/auth/users/${id}/verify`);
+      } else {
+        await api.patch(`/api/auth/users/${id}/deactivate`);
+      }
       setDoctors((prev) => prev.filter((d) => d._id !== id));
       setToast({ message: `Doctor ${verified ? 'approved' : 'rejected'} successfully.`, type: 'success' });
     } catch {
@@ -75,15 +95,7 @@ export default function VerifyDoctors() {
                     <div style={{ width: 46, height: 46, borderRadius: '50%', background: 'var(--primary-light)', border: '1.5px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-dark)', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>{initials}</div>
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Dr. {doc.name}</div>
-                      <div style={{ fontSize: 12, color: 'var(--primary-dark)', fontWeight: 600, marginTop: 2 }}>{doc.specialty}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{doc.email}</div>
-                      {doc.qualifications?.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 8 }}>
-                          {doc.qualifications.map((q, i) => (
-                            <span key={i} style={{ background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 11, padding: '2px 8px', borderRadius: 8, border: '1px solid var(--border)' }}>{q}</span>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
