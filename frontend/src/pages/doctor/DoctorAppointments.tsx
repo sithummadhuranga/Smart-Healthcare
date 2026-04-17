@@ -55,7 +55,7 @@ export default function DoctorAppointments() {
 
       const rawAppointments: Appointment[] = Array.isArray(appointmentsData) ? appointmentsData : appointmentsData.appointments ?? [];
       const slots: Slot[] = Array.isArray(profileData?.availableSlots) ? profileData.availableSlots : [];
-      const slotTypeById = new Map(slots.map((slot) => [slot.slotId, slot.consultationType || 'ONLINE']));
+      const slotTypeById = new Map(slots.map((slot) => [slot.slotId, slot.consultationType]));
 
       const patientIds = Array.from(new Set(rawAppointments.map((appt) => appt.patientId).filter(Boolean)));
       const patientNameById = new Map<string, string>();
@@ -75,7 +75,7 @@ export default function DoctorAppointments() {
       setAppointments(
         rawAppointments.map((appt) => ({
           ...appt,
-          consultationType: appt.slotId ? slotTypeById.get(appt.slotId) ?? 'ONLINE' : 'ONLINE',
+          consultationType: appt.slotId ? slotTypeById.get(appt.slotId) : undefined,
           patientName: patientNameById.get(appt.patientId),
         })),
       );
@@ -165,8 +165,8 @@ export default function DoctorAppointments() {
                       </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>{appt.reason}</div>
                       <div style={{ marginTop: 6 }}>
-                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: appt.consultationType === 'PHYSICAL' ? '#FEF3C7' : '#DBEAFE', color: appt.consultationType === 'PHYSICAL' ? '#92400E' : '#1E40AF' }}>
-                          {appt.consultationType === 'PHYSICAL' ? 'Physical Visit' : 'Online Visit'}
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: appt.consultationType === 'PHYSICAL' ? '#FEF3C7' : appt.consultationType === 'ONLINE' ? '#DBEAFE' : '#F1F5F9', color: appt.consultationType === 'PHYSICAL' ? '#92400E' : appt.consultationType === 'ONLINE' ? '#1E40AF' : '#475569' }}>
+                          {appt.consultationType === 'PHYSICAL' ? 'Physical Visit' : appt.consultationType === 'ONLINE' ? 'Online Visit' : 'Visit Type Pending'}
                         </span>
                       </div>
                       {getScheduledAt(appt) && (
