@@ -209,7 +209,14 @@ export default function RegisterPage() {
             {success && (
               <div style={{ background: 'var(--medical-green-light)', border: '1px solid #6EE7B7', borderRadius: 12, padding: '12px 16px', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 10 }}>
                 <svg width="16" height="16" fill="none" viewBox="0 0 24 24" style={{ flexShrink: 0 }}><path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="#059669" strokeWidth="1.8" strokeLinecap="round"/><path d="M22 4L12 14.01l-3-3" stroke="#059669" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                <p style={{ color: 'var(--medical-green)', fontSize: 13, fontWeight: 500 }}>{success} Redirecting...</p>
+                <div>
+                  <p style={{ color: 'var(--medical-green)', fontSize: 13, fontWeight: 500, margin: 0 }}>{success} Redirecting...</p>
+                  <p style={{ color: '#047857', fontSize: 12, fontWeight: 500, margin: '4px 0 0' }}>
+                    {form.role === 'doctor'
+                      ? 'After approval, add your phone number in your profile to receive SMS cancellation alerts.'
+                      : 'After your first login, add your phone number in your profile to receive SMS appointment updates.'}
+                  </p>
+                </div>
               </div>
             )}
 

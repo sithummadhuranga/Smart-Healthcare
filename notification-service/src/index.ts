@@ -1,7 +1,11 @@
 import 'dotenv/config';
 import express, { Request, Response } from 'express';
 import { closeConsumer, isConsumerRunning, startConsumer } from './consumers/notificationConsumer';
-import { getEmailProviderStatus, isEmailConfigured } from './services/emailService';
+import {
+  getEmailProviderIssue,
+  getEmailProviderStatus,
+  isEmailConfigured,
+} from './services/emailService';
 import { getSmsProviderStatus, isSmsConfigured } from './services/smsService';
 
 const app = express();
@@ -27,7 +31,9 @@ app.use((_req: Request, res: Response) => {
 
 const server = app.listen(PORT, () => {
   console.log(`[${SERVICE_NAME}] Running on port ${PORT}`);
-  console.log(`[${SERVICE_NAME}] Email provider: ${isEmailConfigured() ? 'configured' : 'missing SENDGRID_API_KEY'}`);
+  console.log(
+    `[${SERVICE_NAME}] Email provider: ${isEmailConfigured() ? 'configured' : getEmailProviderIssue() || 'misconfigured'}`
+  );
   console.log(`[${SERVICE_NAME}] SMS provider: ${isSmsConfigured() ? 'configured' : 'missing Twilio credentials'}`);
 });
 

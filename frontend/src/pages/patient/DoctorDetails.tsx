@@ -58,7 +58,10 @@ export default function DoctorDetails() {
         slotId: slot.slotId,
         reason: `${consultationLabel} appointment booked with Dr. ${doctor.name}`,
       });
-      setToast({ message: `Appointment booked with Dr. ${doctor.name}.`, type: 'success' });
+      setToast({
+        message: `Appointment booked with Dr. ${doctor.name}. Track confirmation in Appointments, and keep your profile email and phone up to date for notifications.`,
+        type: 'success',
+      });
       await fetchDoctor();
     } catch (err: unknown) {
       const message = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to book appointment.';

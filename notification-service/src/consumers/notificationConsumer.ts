@@ -127,6 +127,33 @@ const handleAppointmentBooked = async (event: NotificationEvent): Promise<void> 
   }
 };
 
+const handleUserRegistered = async (event: NotificationEvent): Promise<void> => {
+  const { userId, email, name, role } = event;
+
+  console.log(`[notification-service] Processing user.registered for user ${String(userId || 'unknown')}`);
+
+  if (!email || typeof email !== 'string') {
+    return;
+  }
+
+  if (role === 'doctor') {
+    await safeNotify('Email user.registered.doctor', async () =>
+      emailService.sendDoctorRegistrationReceivedEmail(
+        email,
+        String(name || 'Doctor')
+      )
+    );
+    return;
+  }
+
+  await safeNotify('Email user.registered.patient', async () =>
+    emailService.sendPatientWelcomeEmail(
+      email,
+      String(name || 'Valued Patient')
+    )
+  );
+};
+
 const handleAppointmentConfirmed = async (event: NotificationEvent): Promise<void> => {
   const { appointmentId, patientEmail, patientPhone, doctorName, patientName } = event;
 
@@ -284,6 +311,10 @@ const messageHandler = async (msg: ConsumeMessage | null): Promise<void> => {
     console.log(`[notification-service] Received event: ${eventType}`);
 
     switch (eventType) {
+      case 'user.registered':
+        await handleUserRegistered(event);
+        break;
+
       case 'appointment.booked':
         await handleAppointmentBooked(event);
         break;

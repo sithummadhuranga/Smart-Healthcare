@@ -233,15 +233,17 @@ export async function endSession(req: Request, res: Response): Promise<void> {
       duration,
     });
 
-    try {
-      await publishNotificationEvent({
-        event: 'consultation.completed',
-        appointmentId,
-        patientId: eventPayload.patientId,
-        doctorId: eventPayload.doctorId,
-      });
-    } catch (publishError) {
-      console.error('[telemedicine-service] Failed to publish consultation.completed', publishError);
+    if (isStandaloneMode()) {
+      try {
+        await publishNotificationEvent({
+          event: 'consultation.completed',
+          appointmentId,
+          patientId: eventPayload.patientId,
+          doctorId: eventPayload.doctorId,
+        });
+      } catch (publishError) {
+        console.error('[telemedicine-service] Failed to publish consultation.completed', publishError);
+      }
     }
 
     res.status(200).json({

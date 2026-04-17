@@ -92,7 +92,7 @@ export default function PatientProfilePage() {
     try {
       const body: Record<string, unknown> = { name };
       if (dateOfBirth) body.dateOfBirth = dateOfBirth;
-      if (phone) body.phone = phone;
+      if (phone) body.phone = phone.trim().replace(/[\s().-]/g, '');
       const address = [street, city, district].map((value) => value.trim()).filter(Boolean).join(', ');
       if (address) body.address = address;
       const { data } = await api.put('/api/patients/profile', body);
@@ -136,6 +136,18 @@ export default function PatientProfilePage() {
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: 14 }}>Loading profile…</div>
         ) : (
           <form onSubmit={handleSave}>
+            <div style={{
+              background: phone ? '#ECFDF5' : '#FEF3C7',
+              border: `1.5px solid ${phone ? '#A7F3D0' : '#FCD34D'}`,
+              borderRadius: 12, padding: '14px 18px', marginBottom: 16,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ fontSize: 18 }}>{phone ? 'SMS' : 'i'}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: phone ? '#065F46' : '#92400E' }}>
+                {phone ? `Appointment and payment SMS updates will use ${phone}.` : 'Add your phone number in international format to receive appointment and payment SMS updates.'}
+              </span>
+            </div>
+
             {/* Personal Info */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 24, boxShadow: 'var(--shadow-sm)', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -168,7 +180,7 @@ export default function PatientProfilePage() {
                 </div>
                 <div>
                   <label style={labelStyle}>Phone</label>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!editing} placeholder="+94 77 123 4567" style={inputStyle} />
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!editing} placeholder="+94771234567" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Blood Group</label>

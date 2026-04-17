@@ -10,6 +10,10 @@ export function getSmsProviderStatus(): 'active' | 'degraded' {
   return isSmsConfigured() ? 'active' : 'degraded';
 }
 
+function normalizePhoneNumber(phoneNumber: string): string {
+  return phoneNumber.trim().replace(/[\s().-]/g, '');
+}
+
 function getTwilioClient(): ReturnType<typeof twilio> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -35,11 +39,13 @@ export async function sendSMS(toPhoneNumber: string, message: string): Promise<v
     throw new Error('SMS payload missing recipient or message');
   }
 
+  const normalizedToPhoneNumber = normalizePhoneNumber(toPhoneNumber);
+
   try {
     const twilioClient = getTwilioClient();
     const result = await twilioClient.messages.create({
       from: fromPhoneNumber,
-      to: toPhoneNumber,
+      to: normalizedToPhoneNumber,
       body: message,
     });
 

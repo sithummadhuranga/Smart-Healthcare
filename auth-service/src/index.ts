@@ -10,6 +10,7 @@ import authRoutes from './routes/authRoutes';
 import { swaggerSpec } from './swagger';
 import logger from './logger';
 import { runSeeders } from './seeders';
+import { closeRabbitMQ, initializeRabbitMQ } from './services/rabbitmqPublisher';
 
 const app = express();
 const PORT = Number(process.env.AUTH_SERVICE_PORT) || 3001;
@@ -108,6 +109,7 @@ async function start(): Promise<void> {
     });
     logger.info(`[${SERVICE_NAME}] MongoDB connected`);
     await runSeeders();
+    await initializeRabbitMQ();
 
     app.listen(PORT, () => {
       logger.info(`[${SERVICE_NAME}] Running on port ${PORT}`);
@@ -120,6 +122,7 @@ async function start(): Promise<void> {
 
 process.on('SIGTERM', async () => {
   logger.info(`[${SERVICE_NAME}] SIGTERM received — shutting down`);
+  await closeRabbitMQ();
   await mongoose.connection.close();
   process.exit(0);
 });

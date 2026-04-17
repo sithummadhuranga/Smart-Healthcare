@@ -160,7 +160,7 @@ export async function getDoctorById(req: Request, res: Response): Promise<void> 
 export async function getDoctorByUserIdInternal(req: Request, res: Response): Promise<void> {
   try {
     const doctor = await Doctor.findOne({ userId: req.params.userId })
-      .select('userId name specialty bio consultationFee isVerified availableSlots')
+      .select('userId name email phone specialty bio consultationFee isVerified availableSlots')
       .lean();
 
     if (!doctor || !doctor.isVerified) {
@@ -187,18 +187,20 @@ export async function getDoctorProfile(req: Request, res: Response): Promise<voi
 
 export async function updateDoctorProfile(req: Request, res: Response): Promise<void> {
   try {
-    const { specialty, bio, consultationFee, qualifications } = req.body as {
+    const { specialty, bio, consultationFee, qualifications, phone } = req.body as {
       specialty?: string;
       bio?: string;
       consultationFee?: number;
       qualifications?: string[];
+      phone?: string;
     };
 
     if (
       specialty === undefined &&
       bio === undefined &&
       consultationFee === undefined &&
-      qualifications === undefined
+      qualifications === undefined &&
+      phone === undefined
     ) {
       res.status(400).json({
         error: 'Provide at least one field to update',
@@ -208,6 +210,11 @@ export async function updateDoctorProfile(req: Request, res: Response): Promise<
 
     if (qualifications !== undefined && !Array.isArray(qualifications)) {
       res.status(400).json({ error: 'qualifications must be an array of strings' });
+      return;
+    }
+
+    if (phone !== undefined && typeof phone !== 'string') {
+      res.status(400).json({ error: 'phone must be a string' });
       return;
     }
 
@@ -232,6 +239,11 @@ export async function updateDoctorProfile(req: Request, res: Response): Promise<
 
     if (qualifications !== undefined) {
       doctor.qualifications = qualifications;
+    }
+
+    if (phone !== undefined) {
+      const normalizedPhone = phone.trim();
+      doctor.phone = normalizedPhone || undefined;
     }
 
     await doctor.save();

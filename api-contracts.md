@@ -128,7 +128,7 @@ HTTP status codes:
 | `GET` | `/api/doctors/prescriptions` | doctor | — | `[{ _id, patientId, appointmentId, medications, notes, issuedAt }]` |
 | `GET` | `/api/doctors/:id` | **Public** | — | Single doctor public profile (no sensitive fields) |
 | `GET` | `/api/doctors/patients/:patientId/reports` | doctor | — | Patient's uploaded medical reports array |
-| `PUT` | `/api/doctors/profile` | doctor | `{ specialty, bio, consultationFee, qualifications }` | Updated doctor profile |
+| `PUT` | `/api/doctors/profile` | doctor | `{ specialty, bio, phone, consultationFee, qualifications }` | Updated doctor profile |
 | `POST` | `/api/doctors/schedule` | doctor | `{ date, startTime, endTime }` | `{ slotId, date, startTime, endTime, isBooked: false }` |
 | `POST` | `/api/doctors/prescriptions` | doctor | `{ patientId, appointmentId, medications: [{ name, dosage, frequency }], notes }` | Created prescription object |
 | `DELETE` | `/api/doctors/schedule/:slotId` | doctor | — | `{ message: "Slot removed" }` — only if `isBooked: false` |

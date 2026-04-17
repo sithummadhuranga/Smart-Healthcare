@@ -9,6 +9,7 @@ interface DoctorProfileData {
   userId: string;
   name: string;
   email: string;
+  phone?: string;
   specialty?: string;
   bio?: string;
   qualifications: string[];
@@ -34,6 +35,7 @@ export default function DoctorProfile() {
 
   const [specialty, setSpecialty] = useState('');
   const [bio, setBio] = useState('');
+  const [phone, setPhone] = useState('');
   const [consultationFee, setConsultationFee] = useState('');
   const [qualifications, setQualifications] = useState('');
 
@@ -66,6 +68,7 @@ export default function DoctorProfile() {
   function populateForm(p: DoctorProfileData) {
     setSpecialty(p.specialty || '');
     setBio(p.bio || '');
+    setPhone(p.phone || '');
     setConsultationFee(p.consultationFee?.toString() || '');
     setQualifications((p.qualifications || []).join(', '));
   }
@@ -77,6 +80,7 @@ export default function DoctorProfile() {
       const body: Record<string, unknown> = {};
       if (specialty) body.specialty = specialty;
       if (bio) body.bio = bio;
+      if (phone !== (profile?.phone || '')) body.phone = phone.trim().replace(/[\s().-]/g, '');
       if (consultationFee) body.consultationFee = parseFloat(consultationFee);
       if (qualifications.trim()) body.qualifications = qualifications.split(',').map(q => q.trim()).filter(Boolean);
       const { data } = await api.put('/api/doctors/profile', body);
@@ -134,6 +138,18 @@ export default function DoctorProfile() {
               </span>
             </div>
 
+            <div style={{
+              background: phone ? '#ECFDF5' : '#FEF3C7',
+              border: `1.5px solid ${phone ? '#A7F3D0' : '#FCD34D'}`,
+              borderRadius: 12, padding: '14px 18px', marginBottom: 16,
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              <span style={{ fontSize: 18 }}>{phone ? 'SMS' : 'i'}</span>
+              <span style={{ fontSize: 13, fontWeight: 600, color: phone ? '#065F46' : '#92400E' }}>
+                {phone ? `SMS cancellation alerts will use ${phone}.` : 'Add your phone number in international format to receive SMS cancellation alerts.'}
+              </span>
+            </div>
+
             {/* Professional Info */}
             <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 24, boxShadow: 'var(--shadow-sm)', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -153,6 +169,10 @@ export default function DoctorProfile() {
                 <div>
                   <label style={labelStyle}>Email</label>
                   <input value={profile?.email || ''} disabled style={{ ...inputStyle, background: 'var(--bg)', color: 'var(--text-muted)' }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Phone</label>
+                  <input value={phone} onChange={(e) => setPhone(e.target.value)} disabled={!editing} placeholder="+94771234567" style={inputStyle} />
                 </div>
                 <div>
                   <label style={labelStyle}>Specialty</label>

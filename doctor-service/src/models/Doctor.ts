@@ -14,6 +14,7 @@ export interface DoctorDocument extends Document {
   userId: string;
   name: string;
   email: string;
+  phone?: string;
   specialty?: string;
   bio?: string;
   qualifications: string[];
@@ -43,6 +44,7 @@ const DoctorSchema = new Schema<DoctorDocument>(
     userId: { type: String, required: true, unique: true, index: true },
     name: { type: String, required: true },
     email: { type: String, required: true },
+    phone: { type: String },
     specialty: { type: String },
     bio: { type: String },
     qualifications: { type: [String], default: [] },
