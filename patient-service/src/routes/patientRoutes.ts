@@ -172,6 +172,7 @@ router.get('/prescriptions',  verifyToken, requireRole('patient'), getPrescripti
  *         description: Unauthenticated
  */
 router.get('/history',        verifyToken, requireRole('patient'), getMedicalHistory);
+router.get('/hostory',        verifyToken, requireRole('patient'), getMedicalHistory);
 
 // ── Admin routes ──────────────────────────────────────────────────────────────
 
