@@ -3,6 +3,12 @@ import type { ReactElement } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import api, { clearSession, getCurrentUser } from '../api';
 
+interface NavItem {
+  label: string;
+  href: string;
+  icon: string;
+}
+
 /* Clean minimal SVG icons — replaces emoji icons */
 const ICONS: Record<string, ReactElement> = {
   dashboard: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/><rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.8"/></svg>,
@@ -19,7 +25,7 @@ const ICONS: Record<string, ReactElement> = {
   schedule: <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8"/><path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>,
 };
 
-const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
+const NAV: Record<string, NavItem[]> = {
   patient: [
     { label: 'Dashboard', href: '/patient/dashboard', icon: 'dashboard' },
     { label: 'Find Doctors', href: '/patient/doctors', icon: 'doctors' },
@@ -27,7 +33,6 @@ const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
     { label: 'AI Checker', href: '/patient/symptom-checker', icon: 'ai' },
     { label: 'Prescriptions', href: '/patient/prescriptions', icon: 'pill' },
     { label: 'Reports', href: '/patient/reports', icon: 'report' },
-    { label: 'Profile', href: '/patient/profile', icon: 'profile' },
   ],
   doctor: [
     { label: 'Dashboard', href: '/doctor/dashboard', icon: 'dashboard' },
@@ -41,8 +46,31 @@ const NAV: Record<string, { label: string; href: string; icon: string }[]> = {
     { label: 'Users', href: '/admin/users', icon: 'users' },
     { label: 'Verify Doctors', href: '/admin/doctors', icon: 'verify' },
     { label: 'Appointments', href: '/admin/appointments', icon: 'calendar' },
+    { label: 'Payments', href: '/admin/payments', icon: 'pill' },
   ],
 };
+
+function getNavGroups(role: string, links: NavItem[]): { primary: NavItem[]; utility: NavItem[] } {
+  if (role === 'patient') {
+    return {
+      primary: links,
+      utility: [],
+    };
+  }
+
+  return { primary: links, utility: [] };
+}
+
+function getDropdownLinks(role: string): NavItem[] {
+  if (role === 'patient') {
+    return [
+      { label: 'History', href: '/patient/history', icon: 'clipboard' },
+      { label: 'Profile', href: '/patient/profile', icon: 'profile' },
+    ];
+  }
+
+  return [];
+}
 
 const ROLE_BADGE: Record<string, { bg: string; color: string; label: string }> = {
   patient: { bg: 'var(--primary-light)', color: 'var(--primary-dark)', label: 'Patient' },
@@ -58,8 +86,29 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const links = user ? (NAV[user.role] ?? []) : [];
+  const navGroups = user ? getNavGroups(user.role, links) : { primary: [], utility: [] };
+  const dropdownLinks = user ? getDropdownLinks(user.role) : [];
   const badge = user ? (ROLE_BADGE[user.role] ?? ROLE_BADGE.patient) : null;
   const initials = user?.name?.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() ?? 'U';
+
+  function renderNavLink(link: NavItem, compact = false) {
+    const active = location.pathname === link.href;
+
+    return (
+      <Link key={link.href} to={link.href} style={{
+        display: 'flex', alignItems: 'center', gap: compact ? 4 : 5,
+        padding: compact ? '6px 10px' : '6px 11px', borderRadius: 8, textDecoration: 'none',
+        fontSize: compact ? 12 : 12.5, fontWeight: active ? 600 : 500,
+        color: active ? 'var(--primary-dark)' : 'var(--text-secondary)',
+        background: active ? 'var(--primary-50)' : 'transparent',
+        transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', whiteSpace: 'nowrap',
+        letterSpacing: '-0.1px', flexShrink: 0,
+      }}>
+        <span style={{ display: 'flex', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[link.icon]}</span>
+        {link.label}
+      </Link>
+    );
+  }
 
   async function logout() {
     try {
@@ -96,25 +145,17 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop nav */}
-          <nav style={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'center', overflow: 'hidden', minWidth: 0 }} className="hidden-mobile">
-            {links.map((l) => {
-              const active = location.pathname === l.href;
-              return (
-                <Link key={l.href} to={l.href} style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  padding: '6px 11px', borderRadius: 8, textDecoration: 'none',
-                  fontSize: 12.5, fontWeight: active ? 600 : 500,
-                  color: active ? 'var(--primary-dark)' : 'var(--text-secondary)',
-                  background: active ? 'var(--primary-50)' : 'transparent',
-                  transition: 'all 0.2s cubic-bezier(0.4,0,0.2,1)', whiteSpace: 'nowrap',
-                  letterSpacing: '-0.1px', flexShrink: 0,
-                }}>
-                  <span style={{ display: 'flex', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[l.icon]}</span>
-                  {l.label}
-                </Link>
-              );
-            })}
-          </nav>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }} className="hidden-mobile">
+            <nav style={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, justifyContent: 'flex-start', overflowX: 'auto', overflowY: 'hidden', minWidth: 0, scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+              {navGroups.primary.map((link) => renderNavLink(link))}
+            </nav>
+
+            {navGroups.utility.length > 0 && (
+              <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, paddingLeft: 10, borderLeft: '1px solid var(--border)' }}>
+                {navGroups.utility.map((link) => renderNavLink(link, true))}
+              </nav>
+            )}
+          </div>
 
           {/* Right side */}
           <div style={{ marginLeft: 8, display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
@@ -156,6 +197,31 @@ export default function Navbar() {
                         <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 3 }}>{user.email}</div>
                         <span style={{ marginTop: 6, display: 'inline-block', background: badge.bg, color: badge.color, fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 10, letterSpacing: '0.3px' }}>{badge.label.toUpperCase()}</span>
                       </div>
+                      {dropdownLinks.length > 0 && (
+                        <div style={{ padding: '4px 0', marginBottom: 4 }}>
+                          {dropdownLinks.map((link) => {
+                            const active = location.pathname === link.href;
+
+                            return (
+                              <Link
+                                key={link.href}
+                                to={link.href}
+                                onClick={() => setOpen(false)}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: 8,
+                                  padding: '10px 14px', borderRadius: 8,
+                                  textDecoration: 'none', fontSize: 13, fontWeight: active ? 600 : 500,
+                                  color: active ? 'var(--primary-dark)' : 'var(--text-primary)',
+                                  background: active ? 'var(--primary-50)' : 'transparent',
+                                }}
+                              >
+                                <span style={{ display: 'flex', color: active ? 'var(--primary)' : 'var(--text-muted)' }}>{ICONS[link.icon]}</span>
+                                {link.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
                       <button onClick={logout} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 500, color: 'var(--medical-red)', display: 'flex', alignItems: 'center', gap: 8 }}>
                         <span>⎋</span> Sign Out
                       </button>

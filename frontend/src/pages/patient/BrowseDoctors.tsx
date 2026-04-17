@@ -243,6 +243,20 @@ export default function BrowseDoctors() {
                   {/* Buttons — Call Now + Availability like Medico */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                     <button
+                      onClick={() => navigate(`/patient/doctors/${doc._id}`)}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 8,
+                        background: '#fff',
+                        color: 'var(--text-primary)',
+                        border: '1.5px solid var(--border)',
+                        cursor: 'pointer',
+                        fontWeight: 700, fontSize: 12,
+                        transition: 'all 0.2s',
+                      }}
+                    >
+                      View Profile
+                    </button>
+                    <button
                       onClick={() => bookAppointment(doc)}
                       disabled={!available || booking === doc._id}
                       style={{
@@ -256,18 +270,9 @@ export default function BrowseDoctors() {
                     >
                       {booking === doc._id ? 'Booking...' : 'Call Now'}
                     </button>
-                    <button
-                      style={{
-                        flex: 1, padding: '10px 0', borderRadius: 8,
-                        background: 'transparent',
-                        color: available ? 'var(--primary-dark)' : 'var(--text-muted)',
-                        border: `1.5px solid ${available ? 'var(--primary)' : 'var(--border)'}`,
-                        cursor: 'default',
-                        fontWeight: 600, fontSize: 12,
-                      }}
-                    >
-                      {available ? '● Available' : '○ Booked'}
-                    </button>
+                  </div>
+                  <div style={{ marginTop: 10, fontSize: 12, color: available ? 'var(--primary-dark)' : 'var(--text-muted)', fontWeight: 600 }}>
+                    {available ? '● Available for booking' : '○ No open slots right now'}
                   </div>
                 </div>
               );

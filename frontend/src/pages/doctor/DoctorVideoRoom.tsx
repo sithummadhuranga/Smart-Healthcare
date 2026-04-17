@@ -23,6 +23,7 @@ export default function DoctorVideoRoom() {
   const [ending, setEnding] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [error, setError] = useState('');
+  const [sessionInfo, setSessionInfo] = useState<{ status?: string } | null>(null);
 
   const cleanup = useCallback(async () => {
     const tracks = localTracksRef.current;
@@ -66,6 +67,13 @@ export default function DoctorVideoRoom() {
 
   async function startAndJoin() {
     try {
+      try {
+        const { data: info } = await api.get(`/api/telemedicine/${roomId}`);
+        setSessionInfo(info);
+      } catch {
+        setSessionInfo(null);
+      }
+
       // Start the telemedicine session (marks appointment IN_PROGRESS)
       try {
         await api.post('/api/telemedicine/start', { appointmentId: roomId });
@@ -193,7 +201,7 @@ export default function DoctorVideoRoom() {
             Doctor Consultation {joined ? '— Live' : joining ? '— Connecting…' : ''}
           </span>
         </div>
-        <span style={{ color: '#64748B', fontSize: 12 }}>Dr. {user?.name} | Room: {roomId?.slice(0, 8)}…</span>
+        <span style={{ color: '#64748B', fontSize: 12 }}>Dr. {user?.name} | Room: {roomId?.slice(0, 8)}…{sessionInfo?.status ? ` | Status: ${sessionInfo.status}` : ''}</span>
       </div>
 
       {/* Video area */}

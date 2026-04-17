@@ -5,12 +5,20 @@ import Navbar from '../../components/Navbar';
 import Toast from '../../components/Toast';
 
 interface Patient {
+  _id?: string;
   userId: string;
   name: string;
   email: string;
   phone?: string;
   dateOfBirth?: string;
-  address?: string;
+  address?: string | PatientAddress;
+}
+
+interface PatientAddress {
+  street?: string;
+  city?: string;
+  district?: string;
+  country?: string;
 }
 
 interface PatientsResponse {
@@ -19,12 +27,29 @@ interface PatientsResponse {
   pagination?: { total?: number };
 }
 
+function formatAddress(address?: string | PatientAddress): string {
+  if (!address) {
+    return '—';
+  }
+
+  if (typeof address === 'string') {
+    return address.trim() || '—';
+  }
+
+  const parts = [address.street, address.city, address.district, address.country]
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+
+  return parts.length > 0 ? parts.join(', ') : '—';
+}
+
 export default function ManageUsers() {
   const navigate = useNavigate();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const limit = 20;
 
@@ -49,6 +74,25 @@ export default function ManageUsers() {
   }
 
   const totalPages = Math.max(1, Math.ceil(total / limit));
+
+  async function openPatientDetail(patient: Patient) {
+    setSelectedPatient(patient);
+
+    const patientId = patient._id || patient.userId;
+    if (!patientId) {
+      return;
+    }
+
+    setDetailLoading(true);
+    try {
+      const { data } = await api.get(`/api/patients/${patientId}`);
+      setSelectedPatient(data.patient || data);
+    } catch {
+      setToast({ message: 'Failed to load patient details.', type: 'error' });
+    } finally {
+      setDetailLoading(false);
+    }
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -88,12 +132,12 @@ export default function ManageUsers() {
                     <tr><td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 14 }}>No patients found.</td></tr>
                   ) : (
                     patients.map((patient) => (
-                      <tr key={patient.userId} style={{ borderBottom: '1px solid var(--bg)' }} onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--primary-50)'} onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                      <tr key={patient.userId} style={{ borderBottom: '1px solid var(--bg)', cursor: 'pointer' }} onClick={() => void openPatientDetail(patient)} onMouseEnter={(e) => (e.currentTarget as HTMLElement).style.background = 'var(--primary-50)'} onMouseLeave={(e) => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
                         <td style={{ padding: '14px 20px', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)' }}>{patient.name}</td>
                         <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{patient.email}</td>
                         <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{patient.phone || '—'}</td>
                         <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{patient.dateOfBirth ? new Date(patient.dateOfBirth).toLocaleDateString() : '—'}</td>
-                        <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{patient.address || '—'}</td>
+                        <td style={{ padding: '14px 20px', fontSize: 13, color: 'var(--text-secondary)' }}>{formatAddress(patient.address)}</td>
                       </tr>
                     ))
                   )}
@@ -114,6 +158,31 @@ export default function ManageUsers() {
         <button onClick={() => navigate('/admin/dashboard')} style={{ marginTop: 24, background: 'none', border: 'none', color: 'var(--primary)', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
           ← Back to Dashboard
         </button>
+
+        {selectedPatient && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 60 }} onClick={() => setSelectedPatient(null)}>
+            <div style={{ width: '100%', maxWidth: 520, background: '#fff', borderRadius: 16, border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)', padding: 24 }} onClick={(event) => event.stopPropagation()}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 18 }}>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-primary)' }}>{selectedPatient.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>Patient details from the admin patient detail endpoint</div>
+                </div>
+                <button onClick={() => setSelectedPatient(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 18 }}>✕</button>
+              </div>
+              {detailLoading ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 14 }}>Loading patient details…</div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Email</div><div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{selectedPatient.email || '—'}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Phone</div><div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{selectedPatient.phone || '—'}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Date of Birth</div><div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{selectedPatient.dateOfBirth ? new Date(selectedPatient.dateOfBirth).toLocaleDateString() : '—'}</div></div>
+                  <div><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>User ID</div><div style={{ fontSize: 13, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{selectedPatient.userId}</div></div>
+                  <div style={{ gridColumn: '1 / -1' }}><div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: 4 }}>Address</div><div style={{ fontSize: 13, color: 'var(--text-primary)' }}>{formatAddress(selectedPatient.address)}</div></div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

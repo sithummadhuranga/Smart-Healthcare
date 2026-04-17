@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import Navbar from '../../components/Navbar';
@@ -10,6 +10,15 @@ interface Medication {
   frequency: string;
 }
 
+interface PrescriptionRecord {
+  _id?: string;
+  patientId: string;
+  appointmentId: string;
+  medications: Medication[];
+  notes?: string;
+  issuedAt?: string;
+}
+
 export default function IssuePrescription() {
   const navigate = useNavigate();
   const [patientId, setPatientId] = useState('');
@@ -19,7 +28,25 @@ export default function IssuePrescription() {
     { name: '', dosage: '', frequency: '' },
   ]);
   const [loading, setLoading] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    void fetchPrescriptions();
+  }, []);
+
+  async function fetchPrescriptions() {
+    setHistoryLoading(true);
+    try {
+      const { data } = await api.get('/api/doctors/prescriptions');
+      setPrescriptions(Array.isArray(data) ? data : data.prescriptions ?? []);
+    } catch {
+      setToast({ message: 'Failed to load prescriptions.', type: 'error' });
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   function updateMed(index: number, field: keyof Medication, value: string) {
     setMedications((prev) =>
@@ -45,6 +72,7 @@ export default function IssuePrescription() {
         medications,
         notes,
       });
+      await fetchPrescriptions();
       setToast({ message: 'Prescription issued successfully!', type: 'success' });
       setTimeout(() => navigate('/doctor/dashboard'), 1500);
     } catch {
@@ -76,6 +104,36 @@ export default function IssuePrescription() {
       </div>
 
       <div style={{ maxWidth: 760, margin: '0 auto', padding: '28px 24px' }}>
+        <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 24, boxShadow: 'var(--shadow-sm)', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: 'var(--text-primary)' }}>Issued Prescriptions</h3>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{prescriptions.length} records</span>
+          </div>
+          {historyLoading ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Loading prescriptions…</div>
+          ) : prescriptions.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No prescriptions issued yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {prescriptions.slice(0, 5).map((prescription) => (
+                <div key={prescription._id || `${prescription.appointmentId}-${prescription.patientId}`} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>Patient: {prescription.patientId}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{prescription.issuedAt ? new Date(prescription.issuedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Recently issued'}</div>
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Appointment: {prescription.appointmentId}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {prescription.medications.map((medication) => (
+                      <span key={`${medication.name}-${medication.dosage}-${medication.frequency}`} style={{ background: 'var(--primary-50)', color: 'var(--primary-dark)', fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 10 }}>
+                        {medication.name} · {medication.dosage} · {medication.frequency}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 28, boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>

@@ -203,7 +203,7 @@ export default function MedicalReports() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {reports.map((r) => {
-              const cfg = TYPE_CONFIG[r.reportType] ?? TYPE_CONFIG.other;
+              const cfg = TYPE_CONFIG[r.reportType ?? 'other'] ?? TYPE_CONFIG.other;
               const reportKey = r.reportId ?? r._id ?? `${r.title}-${r.uploadedAt ?? r.createdAt ?? ''}`;
               const reportUrl = r.cloudinaryUrl ?? r.fileUrl ?? '#';
               const reportDate = r.uploadedAt ?? r.createdAt;
