@@ -123,9 +123,16 @@ export default function ManageSchedule() {
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: 14 }}>Loading schedule…</div>
         ) : sortedDates.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>No time slots added yet.</p>
-            <p style={{ fontSize: 13, marginTop: 4 }}>Use the form above to add your available consultation times.</p>
+            <div style={{ width: 80, height: 80, borderRadius: 20, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="4" width="18" height="18" rx="2" stroke="#94A3B8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="16" y1="2" x2="16" y2="6" stroke="#94A3B8" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="8" y1="2" x2="8" y2="6" stroke="#94A3B8" strokeWidth="1.6" strokeLinecap="round" />
+                <line x1="3" y1="10" x2="21" y2="10" stroke="#94A3B8" strokeWidth="1.6" strokeLinecap="round" />
+              </svg>
+            </div>
+            <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', margin: '0 0 6px' }}>No time slots added yet.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>Use the form above to add your available consultation times.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -135,7 +142,12 @@ export default function ManageSchedule() {
               return (
                 <div key={dateStr}>
                   <h3 style={{ fontSize: 14, fontWeight: 700, color: isPast ? 'var(--text-muted)' : 'var(--text-primary)', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span>📅</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
+                      <rect x="3" y="4" width="18" height="18" rx="2" stroke={isPast ? '#94A3B8' : 'var(--primary)'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      <line x1="16" y1="2" x2="16" y2="6" stroke={isPast ? '#94A3B8' : 'var(--primary)'} strokeWidth="1.8" strokeLinecap="round" />
+                      <line x1="8" y1="2" x2="8" y2="6" stroke={isPast ? '#94A3B8' : 'var(--primary)'} strokeWidth="1.8" strokeLinecap="round" />
+                      <line x1="3" y1="10" x2="21" y2="10" stroke={isPast ? '#94A3B8' : 'var(--primary)'} strokeWidth="1.8" strokeLinecap="round" />
+                    </svg>
                     {new Date(dateStr + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>({dateSlots.length} slot{dateSlots.length !== 1 ? 's' : ''})</span>
                   </h3>
