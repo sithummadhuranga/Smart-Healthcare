@@ -147,10 +147,31 @@ export default function BrowseDoctors() {
             {[1, 2, 3, 4, 5, 6].map((n) => <Skeleton key={n} />)}
           </div>
         ) : doctors.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>👨‍⚕️</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>No doctors found{specialty ? ` for ${specialty}` : ''}.</p>
-            <p style={{ fontSize: 13, marginTop: 4 }}>Try selecting a different specialty.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 24px', textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: 24, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <svg width="36" height="36" fill="none" viewBox="0 0 24 24">
+                <path d="M5 6.5a3.5 3.5 0 017 0v4a3.5 3.5 0 01-7 0v-4z" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M8.5 14A6.5 6.5 0 0115 20.5" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/>
+                <circle cx="17" cy="20.5" r="2" stroke="#94A3B8" strokeWidth="1.5"/>
+                <path d="M7 3v1.5M10 3v1.5" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>
+              No doctors found{specialty ? ` for ${specialty}` : ''}
+            </h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 28px', maxWidth: 340, lineHeight: 1.6 }}>
+              {specialty
+                ? `There are no verified specialists in ${specialty} at the moment. Try a different specialty or browse all available doctors.`
+                : 'No doctors are currently available. Please check back shortly.'}
+            </p>
+            {specialty && (
+              <button
+                onClick={() => setSpecialty('')}
+                style={{ padding: '11px 28px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(20,184,166,0.25)' }}
+              >
+                Browse All Doctors
+              </button>
+            )}
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 20 }}>

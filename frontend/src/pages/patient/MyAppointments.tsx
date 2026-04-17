@@ -88,12 +88,21 @@ export default function MyAppointments() {
             {[1, 2, 3].map((n) => <Skeleton key={n} />)}
           </div>
         ) : appointments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📅</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>No appointments yet.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 24px', textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: 24, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <svg width="36" height="36" fill="none" viewBox="0 0 24 24">
+                <rect x="3" y="4" width="18" height="18" rx="2" stroke="#94A3B8" strokeWidth="1.5"/>
+                <path d="M16 2v4M8 2v4M3 10h18" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/>
+                <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>No appointments yet</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 28px', maxWidth: 320, lineHeight: 1.6 }}>
+              You have no scheduled appointments. Browse our verified specialists and book your first consultation.
+            </p>
             <button
               onClick={() => navigate('/patient/doctors')}
-              style={{ marginTop: 16, padding: '10px 24px', borderRadius: 9, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13 }}
+              style={{ padding: '11px 28px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 13, boxShadow: '0 4px 12px rgba(20,184,166,0.25)' }}
             >
               Browse Doctors
             </button>

@@ -53,9 +53,17 @@ export default function Prescriptions() {
         ) : error ? (
           <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 12, padding: '16px 20px', color: '#991B1B', fontSize: 13 }}>{error}</div>
         ) : prescriptions.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>💊</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>No prescriptions yet.</p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '80px 24px', textAlign: 'center' }}>
+            <div style={{ width: 80, height: 80, borderRadius: 24, background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+              <svg width="36" height="36" fill="none" viewBox="0 0 24 24">
+                <rect x="5" y="3" width="14" height="18" rx="2" stroke="#94A3B8" strokeWidth="1.5" strokeLinejoin="round"/>
+                <path d="M9 7h6M9 11h6M9 15h4" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 17, fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 10px' }}>No prescriptions yet</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: 0, maxWidth: 320, lineHeight: 1.6 }}>
+              Prescriptions issued by your doctors will appear here after your consultations.
+            </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -64,15 +72,21 @@ export default function Prescriptions() {
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Doctor ID: <span style={{ color: 'var(--primary-dark)' }}>{rx.doctorId}</span></div>
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>📅 {new Date(rx.issuedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
+                      {new Date(rx.issuedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                    </div>
                   </div>
-                  <button onClick={() => window.print()} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>🖨️ Print</button>
+                  <button onClick={() => window.print()} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg width="13" height="13" fill="none" viewBox="0 0 24 24"><path d="M6 9V2h12v7" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="9" width="20" height="10" rx="2" stroke="currentColor" strokeWidth="1.7"/><path d="M6 19v3h12v-3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><circle cx="18" cy="14" r="1" fill="currentColor"/></svg>
+                    Print
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
                   {rx.medications.map((med, i) => (
                     <div key={i} style={{ background: 'var(--primary-light)', border: '1px solid var(--border)', borderRadius: 9, padding: '11px 14px', display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'center' }}>
-                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary-dark)' }}>💊 {med.name}</span>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary-dark)' }}>{med.name}</span>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Dose: <strong>{med.dosage}</strong></span>
                       <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Frequency: <strong>{med.frequency}</strong></span>
                     </div>
@@ -81,7 +95,7 @@ export default function Prescriptions() {
 
                 {rx.notes && (
                   <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 9, padding: '10px 14px', fontSize: 13, color: '#92400E' }}>
-                    <strong>📝 Notes:</strong> {rx.notes}
+                    <strong>Notes:</strong> {rx.notes}
                   </div>
                 )}
               </div>

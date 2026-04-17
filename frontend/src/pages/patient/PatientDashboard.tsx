@@ -52,7 +52,7 @@ export default function PatientDashboard() {
       <section style={{
         position: 'relative', overflow: 'hidden',
         background: '#fff',
-        minHeight: 560,
+        height: 'calc(100vh - 60px)',
       }}>
         {/* Soft abstract shapes in background */}
         <div style={{ position: 'absolute', top: -100, right: -100, width: 600, height: 600, background: 'rgba(20, 184, 166, 0.05)', borderRadius: '50%', filter: 'blur(80px)' }} />
@@ -60,9 +60,9 @@ export default function PatientDashboard() {
         {/* Subtle grid pattern */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.4, backgroundImage: 'radial-gradient(circle, var(--border) 1px, transparent 1px)', backgroundSize: '32px 32px' }} />
 
-        <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', minHeight: 560 }}>
-          {/* Left text — takes 55% */}
-          <div style={{ flex: '1 1 55%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '40px 20px 40px 40px', minWidth: 0, marginTop: 40 }}>
+        <div style={{ maxWidth: 1200, margin: '0 auto', position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', height: '100%' }}>
+          {/* Left text — takes 50% */}
+          <div style={{ flex: '1 1 50%', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 20px 0 48px', minWidth: 0 }}>
             <div style={{
               background: 'var(--primary-50)', color: 'var(--primary-dark)',
               display: 'inline-flex', padding: '6px 16px', borderRadius: 20, marginBottom: 20, alignItems: 'center', gap: 6, width: 'fit-content',
@@ -146,43 +146,68 @@ export default function PatientDashboard() {
 
           {/* Right — Large hero doctors image */}
           <div className="hidden-mobile" style={{
-            flex: '1 1 45%', position: 'relative', minWidth: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%'
+            flex: '1 1 50%',
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            alignSelf: 'stretch',
+            minWidth: 0,
           }}>
-            {/* Decorative background shape for the image */}
-            <div style={{ position: 'absolute', right: '5%', bottom: '5%', width: '80%', height: '80%', background: 'linear-gradient(180deg, var(--primary-100) 0%, rgba(255,255,255,0) 100%)', borderRadius: '40px 40px 0 0', zIndex: 1, borderTop: '1px solid var(--border)' }} />
-            
-            {/* Hero image */}
+            {/* Very soft backdrop */}
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '90%', height: '90%', background: 'radial-gradient(circle, rgba(20, 184, 166, 0.06) 0%, transparent 60%)', zIndex: 0 }} />
+
+            {/* Hero image — filling vertically but centered for spacing */}
             <img
               src="/hero-doctors.svg"
               alt="Healthcare professionals"
               style={{
-                width: '100%', maxWidth: 500, height: '100%', maxHeight: 600,
-                objectFit: 'contain', objectPosition: 'bottom center',
-                position: 'relative', zIndex: 2,
-                marginTop: 40,
+                position: 'relative',
+                zIndex: 1,
+                width: '100%',
+                height: '84%',
+                maxHeight: 700,
+                objectFit: 'contain',
+                objectPosition: 'center',
               }}
             />
-            
-            {/* Floating Elements / Cards like the screenshot */}
-            <div className="animate-float" style={{ position: 'absolute', top: '15%', left: '0%', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 16, padding: '12px 16px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', gap: 12, zIndex: 3, border: '1px solid rgba(255,255,255,0.5)' }}>
-               <div style={{ width: 40, height: 40, borderRadius: 10, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-               </div>
-               <div>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>15 mins</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Avg. wait time</div>
-               </div>
+
+            {/* Floating card — top left of panel */}
+            <div className="animate-float" style={{
+              position: 'absolute', top: '15%', left: '-2%',
+              background: '#fff',
+              borderRadius: 16, padding: '12px 16px',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.09)',
+              display: 'flex', alignItems: 'center', gap: 12,
+              zIndex: 3, border: '1px solid #F1F5F9',
+              minWidth: 160,
+            }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              </div>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#0F172A' }}>15 mins</div>
+                <div style={{ fontSize: 11, color: '#64748B' }}>Avg. wait time</div>
+              </div>
             </div>
 
-            <div className="animate-float" style={{ position: 'absolute', bottom: '20%', right: '-5%', background: 'rgba(255,255,255,0.9)', backdropFilter: 'blur(10px)', borderRadius: 16, padding: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.08)', display: 'flex', flexDirection: 'column', gap: 8, zIndex: 3, border: '1px solid rgba(255,255,255,0.5)', animationDelay: '1.5s' }}>
+            {/* Floating card — bottom right of panel */}
+            <div className="animate-float" style={{
+              position: 'absolute', bottom: '15%', right: '2%',
+              background: '#fff',
+              borderRadius: 16, padding: '14px 18px',
+              boxShadow: '0 8px 28px rgba(0,0,0,0.09)',
+              display: 'flex', flexDirection: 'column', gap: 6,
+              zIndex: 3, border: '1px solid #F1F5F9',
+              animationDelay: '1.5s',
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="14" height="14" fill="none" viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5" stroke="#10B981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Verified Pros</div>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Verified Pros</span>
               </div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--primary)' }}>200+</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color: 'var(--primary)', lineHeight: 1 }}>200+</div>
             </div>
           </div>
         </div>
@@ -191,10 +216,10 @@ export default function PatientDashboard() {
       </section>
 
       {/* ═══════ Services Section — Modern Cards ═══════ */}
-      <section style={{ background: 'var(--bg)', padding: '48px 24px 56px' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <section style={{ background: 'var(--bg)', padding: '120px 24px', minHeight: '100vh', display: 'flex', alignItems: 'center' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', width: '100%' }}>
           {/* Section header */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32, flexWrap: 'wrap', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 48, flexWrap: 'wrap', gap: 16 }}>
             <div>
               <span style={{
                 display: 'inline-block', background: 'var(--primary-light)', color: 'var(--primary-dark)',
