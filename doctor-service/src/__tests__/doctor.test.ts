@@ -180,4 +180,50 @@ describe('doctor service routes', () => {
     expect(res.status).toBe(200);
     expect(save).toHaveBeenCalledTimes(1);
   });
+
+  it('allows doctor to access patient reports when an appointment relationship exists', async () => {
+    mockedAxiosGet
+      .mockResolvedValueOnce({
+        data: [{ id: 'a1', patientId: 'p1', status: 'CONFIRMED' }],
+      })
+      .mockResolvedValueOnce({
+        data: { reports: [{ _id: 'r1', title: 'CBC' }] },
+      });
+
+    const res = await request(app)
+      .get('/api/doctors/patients/p1/reports')
+      .set('Authorization', authHeader('doctor', 'doc-1'));
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body[0].title).toBe('CBC');
+  });
+
+  it('blocks doctor from accessing unrelated patient reports', async () => {
+    mockedAxiosGet.mockResolvedValueOnce({
+      data: [{ id: 'a1', patientId: 'other-patient', status: 'CONFIRMED' }],
+    });
+
+    const res = await request(app)
+      .get('/api/doctors/patients/p1/reports')
+      .set('Authorization', authHeader('doctor', 'doc-1'));
+
+    expect(res.status).toBe(403);
+    expect(res.body.error).toMatch(/active or completed consultations/i);
+  });
+
+  it('blocks doctor when only cancelled or rejected appointments exist', async () => {
+    mockedAxiosGet.mockResolvedValueOnce({
+      data: [
+        { id: 'a1', patientId: 'p1', status: 'CANCELLED' },
+        { id: 'a2', patientId: 'p1', status: 'REJECTED' },
+      ],
+    });
+
+    const res = await request(app)
+      .get('/api/doctors/patients/p1/reports')
+      .set('Authorization', authHeader('doctor', 'doc-1'));
+
+    expect(res.status).toBe(403);
+  });
 });
