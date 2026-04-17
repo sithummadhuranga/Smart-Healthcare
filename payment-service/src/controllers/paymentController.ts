@@ -46,6 +46,9 @@ type PaymentWebhookEventRow = {
 
 const DEFAULT_CONSULTATION_FEE = 25.0;
 const DEFAULT_CURRENCY = 'usd';
+const MIN_STRIPE_AMOUNT_CENTS_BY_CURRENCY: Record<string, number> = {
+  usd: 50,
+};
 const WEBHOOK_PROCESSING_STATUS = 'PROCESSING';
 const WEBHOOK_COMPLETED_STATUS = 'COMPLETED';
 const WEBHOOK_FAILED_STATUS = 'FAILED';
@@ -82,6 +85,16 @@ const getNumericValue = (value: number | string | null | undefined, fallback = 0
   }
 
   return fallback;
+};
+
+const getStripeMinAmountCents = (currency: string): number => {
+  return MIN_STRIPE_AMOUNT_CENTS_BY_CURRENCY[currency.toLowerCase()] ?? 1;
+};
+
+const getBillableAmountCents = (fee: number, currency: string): number => {
+  const minAmount = getStripeMinAmountCents(currency);
+  const requestedAmount = Math.round(fee * 100);
+  return Math.max(requestedAmount, minAmount);
 };
 
 const pickValue = (record: Record<string, unknown>, keys: string[]): string | number | undefined => {
@@ -329,7 +342,12 @@ const fetchConsultationFee = async (doctorId: string): Promise<number> => {
     const doctor = response.data as DoctorDetails;
     const feeValue = pickValue(doctor as Record<string, unknown>, ['consultationFee', 'consultation_fee']);
 
-    return getNumericValue(feeValue, DEFAULT_CONSULTATION_FEE);
+    const fee = getNumericValue(feeValue, DEFAULT_CONSULTATION_FEE);
+    if (fee <= 0) {
+      return DEFAULT_CONSULTATION_FEE;
+    }
+
+    return fee;
   } catch (error) {
     const response = buildAxiosErrorResponse(error, 'Unable to reach doctor service');
 
@@ -340,6 +358,66 @@ const fetchConsultationFee = async (doctorId: string): Promise<number> => {
     console.warn('[payment-service] Doctor service unavailable, using default consultation fee');
     return DEFAULT_CONSULTATION_FEE;
   }
+};
+
+const markAppointmentPaidInternal = async (appointmentId: string): Promise<void> => {
+  try {
+    const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
+    const internalApiKey = process.env.INTERNAL_SERVICE_API_KEY;
+
+    if (!internalApiKey) {
+      throw new Error('INTERNAL_SERVICE_API_KEY is required for internal appointment updates');
+    }
+
+    await axios.patch(
+      `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}/pay`,
+      {},
+      {
+        headers: {
+          'x-internal-api-key': internalApiKey,
+        },
+        timeout: 5_000,
+      }
+    );
+  } catch (error) {
+    console.warn('[payment-service] Failed to update appointment status to PAID:', error);
+  }
+};
+
+const reconcileSucceededPaymentIntent = async (
+  client: PoolClient,
+  stripe: Stripe,
+  payment: PaymentRow
+): Promise<PaymentRow> => {
+  if (payment.status === 'COMPLETED' || !payment.stripe_payment_intent_id) {
+    return payment;
+  }
+
+  const intent = await stripe.paymentIntents.retrieve(payment.stripe_payment_intent_id);
+  if (intent.status !== 'succeeded') {
+    return payment;
+  }
+
+  const paymentMethod = intent.payment_method_types?.[0] || payment.payment_method;
+  const stripeChargeId = typeof intent.latest_charge === 'string'
+    ? intent.latest_charge
+    : intent.latest_charge
+      ? String(intent.latest_charge)
+      : payment.stripe_charge_id;
+
+  const updated = await client.query<PaymentRow>(
+    `UPDATE payments
+     SET status = 'COMPLETED',
+         payment_method = $2,
+         stripe_charge_id = $3,
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING *`,
+    [payment.id, paymentMethod, stripeChargeId]
+  );
+
+  await markAppointmentPaidInternal(payment.appointment_id);
+  return updated.rows[0] ?? payment;
 };
 
 const createPaymentRecord = async (
@@ -417,6 +495,8 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
 
     const stripe = getStripeClient();
     const consultationFee = await fetchConsultationFee(appointmentDoctorId);
+    const chargeAmountCents = getBillableAmountCents(consultationFee, DEFAULT_CURRENCY);
+    const chargeAmount = chargeAmountCents / 100;
     const result = await runWithClient(async (client) => {
       await lockAppointment(client, appointmentId);
 
@@ -431,10 +511,18 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
         }
 
         const pendingPayment = await readLatestPendingPayment(client, appointmentId);
-        const targetPayment = pendingPayment ?? (await createPendingPaymentRow(client, appointmentId, user.userId, consultationFee));
+        const targetPayment = pendingPayment ?? (await createPendingPaymentRow(client, appointmentId, user.userId, chargeAmount));
 
         if (targetPayment.stripe_payment_intent_id) {
           const existingIntent = await stripe.paymentIntents.retrieve(targetPayment.stripe_payment_intent_id);
+
+          if (existingIntent.status === 'succeeded') {
+            const reconciledPayment = await reconcileSucceededPaymentIntent(client, stripe, targetPayment);
+            return {
+              status: 'completed' as const,
+              payment: reconciledPayment,
+            };
+          }
 
           if (!existingIntent.client_secret) {
             throw new Error('Stripe PaymentIntent is missing client secret');
@@ -452,7 +540,7 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
 
         const paymentIntent = await stripe.paymentIntents.create(
           {
-            amount: Math.round(consultationFee * 100),
+            amount: chargeAmountCents,
             currency: DEFAULT_CURRENCY,
             metadata: {
               appointmentId,
@@ -474,7 +562,7 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
         await updatePaymentIntentRow(
           client,
           targetPayment.id,
-          consultationFee,
+          chargeAmount,
           paymentIntent.id,
           paymentIntent.currency || DEFAULT_CURRENCY,
           paymentMethod
@@ -687,27 +775,7 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
             }
           }
 
-          try {
-            const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
-            const internalApiKey = process.env.INTERNAL_SERVICE_API_KEY;
-
-            if (!internalApiKey) {
-              throw new Error('INTERNAL_SERVICE_API_KEY is required for internal appointment updates');
-            }
-
-            await axios.patch(
-              `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}/pay`,
-              {},
-              {
-                headers: {
-                  'x-internal-api-key': internalApiKey,
-                },
-                timeout: 5_000,
-              }
-            );
-          } catch (error) {
-            console.warn('[payment-service] Failed to update appointment status to PAID:', error);
-          }
+          await markAppointmentPaidInternal(appointmentId);
 
           await publishEvent('payment.confirmed', {
             appointmentId,
@@ -785,21 +853,33 @@ export const getPaymentByAppointment = async (req: AuthenticatedRequest, res: Re
       return;
     }
 
-    const result = await pool.query<PaymentRow>(
-      `SELECT *
-       FROM payments
-       WHERE appointment_id = $1
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [appointmentId]
-    );
+    const stripe = getStripeClient();
+    const payment = await runWithClient(async (client) => {
+      await lockAppointment(client, appointmentId);
+      try {
+        const result = await client.query<PaymentRow>(
+          `SELECT *
+           FROM payments
+           WHERE appointment_id = $1
+           ORDER BY created_at DESC
+           LIMIT 1`,
+          [appointmentId]
+        );
 
-    if (result.rows.length === 0) {
+        if (result.rows.length === 0) {
+          return null;
+        }
+
+        return await reconcileSucceededPaymentIntent(client, stripe, result.rows[0]);
+      } finally {
+        await unlockAppointment(client, appointmentId);
+      }
+    });
+
+    if (!payment) {
       res.status(404).json({ error: 'Payment not found for this appointment' });
       return;
     }
-
-    const payment = result.rows[0];
 
     if (user.role === 'patient' && payment.patient_id !== user.userId) {
       res.status(403).json({ error: 'Access denied: this payment does not belong to you' });

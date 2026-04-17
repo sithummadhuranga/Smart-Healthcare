@@ -28,6 +28,7 @@ import ManageSchedule from './pages/doctor/ManageSchedule';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
 import VerifyDoctors from './pages/admin/VerifyDoctors';
+import ManageAppointments from './pages/admin/ManageAppointments';
 
 export default function App() {
   return (
@@ -61,6 +62,7 @@ export default function App() {
         <Route path="/admin/dashboard" element={<ProtectedRoute role="admin"><AdminDashboard /></ProtectedRoute>} />
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/admin/doctors" element={<ProtectedRoute role="admin"><VerifyDoctors /></ProtectedRoute>} />
+        <Route path="/admin/appointments" element={<ProtectedRoute role="admin"><ManageAppointments /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

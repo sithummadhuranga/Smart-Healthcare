@@ -11,8 +11,24 @@ const app = express();
 const PORT = Number(process.env.APPOINTMENT_SERVICE_PORT) || 3004;
 const SERVICE_NAME = 'appointment-service';
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+  }),
+);
 
 // ── Swagger API Docs ────────────────────────────────────────────────────────
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {

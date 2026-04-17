@@ -17,9 +17,34 @@ async function ensureDoctorProfile(req: Request) {
       bio: '',
       qualifications: [],
       consultationFee: 0,
-      isVerified: false,
+      // Auth-service already blocks unverified doctors from logging in.
+      // Any doctor reaching this point has been admin-verified in auth-service.
+      isVerified: true,
       availableSlots: [],
     });
+  } else {
+    let dirty = false;
+
+    // Keep profile identity fields synced with auth claims.
+    if (doctor.name !== user.name) {
+      doctor.name = user.name;
+      dirty = true;
+    }
+
+    if (doctor.email !== user.email) {
+      doctor.email = user.email;
+      dirty = true;
+    }
+
+    // Backfill stale profiles created before verification flow fix.
+    if (!doctor.isVerified) {
+      doctor.isVerified = true;
+      dirty = true;
+    }
+
+    if (dirty) {
+      await doctor.save();
+    }
   }
 
   return doctor;
@@ -97,27 +122,44 @@ export async function updateDoctorProfile(req: Request, res: Response): Promise<
     };
 
     if (
-      specialty === undefined ||
-      bio === undefined ||
-      consultationFee === undefined ||
+      specialty === undefined &&
+      bio === undefined &&
+      consultationFee === undefined &&
       qualifications === undefined
     ) {
       res.status(400).json({
-        error: 'specialty, bio, consultationFee, and qualifications are required',
+        error: 'Provide at least one field to update',
       });
       return;
     }
 
-    if (!Array.isArray(qualifications)) {
+    if (qualifications !== undefined && !Array.isArray(qualifications)) {
       res.status(400).json({ error: 'qualifications must be an array of strings' });
       return;
     }
 
+    if (consultationFee !== undefined && (!Number.isFinite(consultationFee) || consultationFee < 0)) {
+      res.status(400).json({ error: 'consultationFee must be a non-negative number' });
+      return;
+    }
+
     const doctor = await ensureDoctorProfile(req);
-    doctor.specialty = specialty;
-    doctor.bio = bio;
-    doctor.consultationFee = consultationFee;
-    doctor.qualifications = qualifications;
+
+    if (specialty !== undefined) {
+      doctor.specialty = specialty;
+    }
+
+    if (bio !== undefined) {
+      doctor.bio = bio;
+    }
+
+    if (consultationFee !== undefined) {
+      doctor.consultationFee = consultationFee;
+    }
+
+    if (qualifications !== undefined) {
+      doctor.qualifications = qualifications;
+    }
 
     await doctor.save();
 

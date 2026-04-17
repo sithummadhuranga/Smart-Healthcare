@@ -65,7 +65,9 @@ const authLimiter = rateLimit({
   message: { error: 'Too many authentication attempts, please try again later' },
 });
 
-app.use('/api/auth', authLimiter);
+// Apply strict limiter only to credential-entry endpoints.
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
 app.use('/api', globalLimiter);
 
 // ── Health check (no auth, no rate-limit) ─────────────────────────────────────

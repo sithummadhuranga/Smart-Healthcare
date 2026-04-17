@@ -317,7 +317,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+        VITE_STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+        VITE_AGORA_APP_ID: ${VITE_AGORA_APP_ID}
     container_name: frontend
+    env_file: ./.env
     ports:
       - "80:80"
     networks:
