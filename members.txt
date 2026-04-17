@@ -26,12 +26,11 @@ Member 3 — Telemedicine Service + Payment Service + Notification Service
   Email              : it23227354@my.sliit.lk
 
 Member 4 — React Frontend + AI Symptom Checker Service
-  Name               : [REPLACE WITH FULL NAME]
-  Registration No.   : [REPLACE WITH REG NO]
-  Student ID         : [REPLACE WITH STUDENT ID]
-  GitHub Username    : [REPLACE WITH GITHUB USERNAME]
-  Email              : [REPLACE WITH EMAIL]
-
+  Name               : T.H.N.Nadushka
+  Registration No.   : IT23294202
+  Student ID         : IT23294202
+  GitHub Username    : NimnathNadushka
+  Email              : it23294202@my.sliit.lk
 MODULE
 ======
   Module Code  : SE3020
