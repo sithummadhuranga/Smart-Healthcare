@@ -32,16 +32,16 @@ A production-grade, cloud-native healthcare telemedicine platform built using a 
 
 | Service | Port | Owner |
 |---|---|---|
-| API Gateway | 3000 | Member 1 |
-| Auth Service | 3001 | Member 1 |
-| Patient Service | 3002 | Member 1 |
-| Doctor Service | 3003 | Member 2 |
-| Appointment Service | 3004 | Member 2 |
-| Telemedicine Service | 3005 | Member 3 |
-| Payment Service | 3006 | Member 3 |
-| Notification Service | 3007 | Member 3 |
-| AI Symptom Checker | 8000 | Member 4 |
-| React Frontend (Vite build via Nginx) | 80 | Member 4 |
+| API Gateway | 3000 | Member 1 - H.M.T.S.M. Dissanayake |
+| Auth Service | 3001 | Member 1 - H.M.T.S.M. Dissanayake |
+| Patient Service | 3002 | Member 1 - H.M.T.S.M. Dissanayake |
+| Doctor Service | 3003 | Member 2 - G.S.R. Nanayakkara |
+| Appointment Service | 3004 | Member 2 - G.S.R. Nanayakkara |
+| Telemedicine Service | 3005 | Member 3 - W.C.S.A. Lowe |
+| Payment Service | 3006 | Member 3 - W.C.S.A. Lowe |
+| Notification Service | 3007 | Member 3 - W.C.S.A. Lowe |
+| AI Symptom Checker | 8000 | Member 4 - T.H.N. Nadushka |
+| React Frontend (Vite build via Nginx) | 80 | Member 4 - T.H.N. Nadushka |
 
 ## Quick Start (Docker Compose)
 
@@ -106,9 +106,9 @@ Copy `.env.example` to `.env` and fill in all values. The example file contains 
 
 ## Team
 
-| Role | Member |
-|---|---|
-| Infrastructure Lead + Auth + Patient Service | Member 1 |
-| Doctor Service + Appointment Service | Member 2 |
-| Telemedicine + Payment + Notification | Member 3 |
-| Frontend + AI Symptom Checker | Member 4 |
+| Member | Name | Registration No. | GitHub | Email | Responsibility |
+|---|---|---|---|---|---|
+| Member 1 | H.M.T.S.M. Dissanayake | IT23294066 | [sithummadhuranga](https://github.com/sithummadhuranga) | it23294066@my.sliit.lk | Infrastructure Lead, API Gateway, Auth Service, Patient Service |
+| Member 2 | G.S.R. Nanayakkara | IT23343702 | [sathufit](https://github.com/sathufit) | it23343702@my.sliit.lk | Doctor Service, Appointment Service, Admin APIs |
+| Member 3 | W.C.S.A. Lowe | IT23227354 | [christineshwethalowe](https://github.com/christineshwethalowe) | it23227354@my.sliit.lk | Telemedicine Service, Payment Service, Notification Service |
+| Member 4 | T.H.N. Nadushka | IT23294202 | [NimnathNadushka](https://github.com/NimnathNadushka) | it23294202@my.sliit.lk | React Frontend, AI Symptom Checker Service |
