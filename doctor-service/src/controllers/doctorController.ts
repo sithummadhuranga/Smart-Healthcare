@@ -1,8 +1,77 @@
 import { Request, Response } from 'express';
 import { v4 as uuidv4 } from 'uuid';
 import axios from 'axios';
-import { Doctor } from '../models/Doctor';
+import { Doctor, type DoctorSlot } from '../models/Doctor';
 import { Prescription } from '../models/Prescription';
+
+type SlotWithAvailability = DoctorSlot & {
+  bookedCount: number;
+  remainingCapacity: number;
+};
+
+function parseTimeToMinutes(value: string): number {
+  const match = /^(\d{2}):(\d{2})$/.exec(value);
+  if (!match) return Number.NaN;
+  const hours = Number(match[1]);
+  const minutes = Number(match[2]);
+  if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return Number.NaN;
+  return hours * 60 + minutes;
+}
+
+function formatMinutesToTime(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60).toString().padStart(2, '0');
+  const minutes = (totalMinutes % 60).toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+async function fetchSlotBookingCounts(doctorUserId: string, slotIds: string[]): Promise<Map<string, number>> {
+  if (!slotIds.length) return new Map<string, number>();
+
+  const appointmentServiceUrl = process.env.APPOINTMENT_SERVICE_URL;
+  if (!appointmentServiceUrl) {
+    return new Map<string, number>();
+  }
+
+  try {
+    const response = await axios.post<{ counts?: Record<string, number> }>(
+      `${appointmentServiceUrl}/api/appointments/internal/slot-bookings`,
+      {
+        doctorId: doctorUserId,
+        slotIds,
+      },
+      { timeout: 8000 }
+    );
+
+    const counts = response.data?.counts ?? {};
+    return new Map<string, number>(Object.entries(counts).map(([slotId, count]) => [slotId, Number(count) || 0]));
+  } catch {
+    return new Map<string, number>();
+  }
+}
+
+async function enrichDoctorSlots<T extends { userId?: string; availableSlots?: DoctorSlot[] }>(doctor: T): Promise<T & { availableSlots: SlotWithAvailability[] }> {
+  const slots = Array.isArray(doctor.availableSlots) ? doctor.availableSlots : [];
+  const slotIds = slots.map((slot) => slot.slotId);
+  const counts = await fetchSlotBookingCounts(doctor.userId || '', slotIds);
+
+  const enrichedSlots = slots.map((slot) => {
+    const capacity = Math.max(1, Number(slot.maxBookings) || 1);
+    const bookedCount = Math.max(0, counts.get(slot.slotId) || 0);
+    const remainingCapacity = Math.max(0, capacity - bookedCount);
+    return {
+      ...slot,
+      maxBookings: capacity,
+      bookedCount,
+      remainingCapacity,
+      isBooked: remainingCapacity === 0,
+    };
+  });
+
+  return {
+    ...doctor,
+    availableSlots: enrichedSlots,
+  };
+}
 
 async function ensureDoctorProfile(req: Request) {
   const user = req.user!;
@@ -60,10 +129,11 @@ export async function getDoctors(req: Request, res: Response): Promise<void> {
     }
 
     const doctors = await Doctor.find(filter)
-      .select('name specialty bio consultationFee isVerified availableSlots')
+      .select('userId name specialty bio consultationFee isVerified availableSlots')
       .lean();
 
-    res.status(200).json(doctors);
+    const withAvailability = await Promise.all(doctors.map((doctor) => enrichDoctorSlots(doctor)));
+    res.status(200).json(withAvailability);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch doctors' });
   }
@@ -80,7 +150,8 @@ export async function getDoctorById(req: Request, res: Response): Promise<void> 
       return;
     }
 
-    res.status(200).json(doctor);
+    const withAvailability = await enrichDoctorSlots(doctor);
+    res.status(200).json(withAvailability);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch doctor' });
   }
@@ -97,7 +168,8 @@ export async function getDoctorByUserIdInternal(req: Request, res: Response): Pr
       return;
     }
 
-    res.status(200).json(doctor);
+    const withAvailability = await enrichDoctorSlots(doctor);
+    res.status(200).json(withAvailability);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch doctor' });
   }
@@ -106,7 +178,8 @@ export async function getDoctorByUserIdInternal(req: Request, res: Response): Pr
 export async function getDoctorProfile(req: Request, res: Response): Promise<void> {
   try {
     const doctor = await ensureDoctorProfile(req);
-    res.status(200).json(doctor);
+    const withAvailability = await enrichDoctorSlots(doctor.toObject());
+    res.status(200).json(withAvailability);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch doctor profile' });
   }
@@ -172,7 +245,8 @@ export async function updateDoctorProfile(req: Request, res: Response): Promise<
 export async function getSchedule(req: Request, res: Response): Promise<void> {
   try {
     const doctor = await ensureDoctorProfile(req);
-    res.status(200).json(doctor.availableSlots);
+    const withAvailability = await enrichDoctorSlots(doctor.toObject());
+    res.status(200).json(withAvailability.availableSlots);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch schedule' });
   }
@@ -180,14 +254,29 @@ export async function getSchedule(req: Request, res: Response): Promise<void> {
 
 export async function addScheduleSlot(req: Request, res: Response): Promise<void> {
   try {
-    const { date, startTime, endTime } = req.body as {
+    const { date, startTime, endTime, consultationType, maxBookings, slotDurationMinutes } = req.body as {
       date?: string;
       startTime?: string;
       endTime?: string;
+      consultationType?: 'ONLINE' | 'PHYSICAL';
+      maxBookings?: number;
+      slotDurationMinutes?: number;
     };
 
     if (!date || !startTime || !endTime) {
       res.status(400).json({ error: 'date, startTime, and endTime are required' });
+      return;
+    }
+
+    const normalizedType = (consultationType || 'ONLINE').toUpperCase() as 'ONLINE' | 'PHYSICAL';
+    if (normalizedType !== 'ONLINE' && normalizedType !== 'PHYSICAL') {
+      res.status(400).json({ error: 'consultationType must be ONLINE or PHYSICAL' });
+      return;
+    }
+
+    const capacity = Number(maxBookings ?? 1);
+    if (!Number.isFinite(capacity) || capacity < 1 || !Number.isInteger(capacity)) {
+      res.status(400).json({ error: 'maxBookings must be a positive integer' });
       return;
     }
 
@@ -197,32 +286,69 @@ export async function addScheduleSlot(req: Request, res: Response): Promise<void
       return;
     }
 
-    const doctor = await ensureDoctorProfile(req);
-
-    const duplicateSlot = doctor.availableSlots.find(
-      (slot) =>
-        slot.date.toISOString().slice(0, 10) === parsedDate.toISOString().slice(0, 10) &&
-        slot.startTime === startTime &&
-        slot.endTime === endTime
-    );
-
-    if (duplicateSlot) {
-      res.status(409).json({ error: 'An identical slot already exists' });
+    const startMinutes = parseTimeToMinutes(startTime);
+    const endMinutes = parseTimeToMinutes(endTime);
+    if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes) || endMinutes <= startMinutes) {
+      res.status(400).json({ error: 'startTime and endTime must be valid and endTime must be later than startTime' });
       return;
     }
 
-    const slot = {
-      slotId: uuidv4(),
-      date: parsedDate,
-      startTime,
-      endTime,
-      isBooked: false,
-    };
+    const interval = slotDurationMinutes === undefined || slotDurationMinutes === null
+      ? endMinutes - startMinutes
+      : Number(slotDurationMinutes);
 
-    doctor.availableSlots.push(slot);
+    if (!Number.isFinite(interval) || interval < 1 || !Number.isInteger(interval)) {
+      res.status(400).json({ error: 'slotDurationMinutes must be a positive integer' });
+      return;
+    }
+
+    if (interval > endMinutes - startMinutes) {
+      res.status(400).json({ error: 'slotDurationMinutes cannot exceed the total time range' });
+      return;
+    }
+
+    const doctor = await ensureDoctorProfile(req);
+
+    const newSlots: DoctorSlot[] = [];
+    for (let cursor = startMinutes; cursor + interval <= endMinutes; cursor += interval) {
+      const candidateStart = formatMinutesToTime(cursor);
+      const candidateEnd = formatMinutesToTime(cursor + interval);
+
+      const duplicateSlot = doctor.availableSlots.find(
+        (slot) =>
+          slot.date.toISOString().slice(0, 10) === parsedDate.toISOString().slice(0, 10) &&
+          slot.startTime === candidateStart &&
+          slot.endTime === candidateEnd &&
+          (slot.consultationType || 'ONLINE') === normalizedType
+      );
+
+      if (duplicateSlot) {
+        continue;
+      }
+
+      newSlots.push({
+        slotId: uuidv4(),
+        date: parsedDate,
+        startTime: candidateStart,
+        endTime: candidateEnd,
+        consultationType: normalizedType,
+        maxBookings: capacity,
+        isBooked: false,
+      });
+    }
+
+    if (!newSlots.length) {
+      res.status(409).json({ error: 'No new slots were created. The range may already exist.' });
+      return;
+    }
+
+    doctor.availableSlots.push(...newSlots);
     await doctor.save();
 
-    res.status(201).json(slot);
+    res.status(201).json({
+      message: `Created ${newSlots.length} slot${newSlots.length === 1 ? '' : 's'}`,
+      slots: newSlots,
+    });
   } catch (error) {
     res.status(500).json({ error: 'Failed to add schedule slot' });
   }
@@ -239,7 +365,9 @@ export async function deleteScheduleSlot(req: Request, res: Response): Promise<v
       return;
     }
 
-    if (targetSlot.isBooked) {
+    const counts = await fetchSlotBookingCounts(doctor.userId, [slotId]);
+    const activeBookings = counts.get(slotId) || 0;
+    if (activeBookings > 0) {
       res.status(409).json({ error: 'Cannot remove a booked slot' });
       return;
     }
@@ -278,10 +406,94 @@ export async function createPrescription(req: Request, res: Response): Promise<v
       return;
     }
 
+    const appointmentServiceUrl = process.env.APPOINTMENT_SERVICE_URL;
+    if (!appointmentServiceUrl) {
+      res.status(500).json({ error: 'Server misconfiguration: APPOINTMENT_SERVICE_URL is missing' });
+      return;
+    }
+
+    type AppointmentPayload = {
+      id: string;
+      patientId: string;
+      doctorId: string;
+      status: string;
+    };
+
+    let appointment: AppointmentPayload;
+    try {
+      const appointmentResponse = await axios.get<AppointmentPayload>(
+        `${appointmentServiceUrl}/api/appointments/${encodeURIComponent(appointmentId)}`,
+        {
+          headers: {
+            Authorization: req.headers.authorization || '',
+          },
+          timeout: 8000,
+        },
+      );
+      appointment = appointmentResponse.data;
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        res.status(404).json({ error: 'Consultation not found for prescription' });
+        return;
+      }
+
+      if (axios.isAxiosError(error) && (error.response?.status === 401 || error.response?.status === 403)) {
+        res.status(403).json({ error: 'Not authorized to prescribe for this consultation' });
+        return;
+      }
+
+      res.status(502).json({ error: 'Failed to validate consultation details' });
+      return;
+    }
+
+    if (appointment.doctorId !== req.user!.userId) {
+      res.status(403).json({ error: 'You can only prescribe for your own consultations' });
+      return;
+    }
+
+    if (appointment.patientId !== patientId) {
+      res.status(400).json({ error: 'Selected patient does not match consultation patient' });
+      return;
+    }
+
+    if (!['IN_PROGRESS', 'COMPLETED'].includes(appointment.status)) {
+      res.status(400).json({ error: 'Prescriptions can only be issued for active or completed consultations' });
+      return;
+    }
+
+    const alreadyIssued = await Prescription.findOne({ appointmentId }).select('_id').lean();
+    if (alreadyIssued) {
+      res.status(409).json({ error: 'A prescription already exists for this consultation' });
+      return;
+    }
+
+    let patientName: string | undefined;
+    const patientServiceUrl = process.env.PATIENT_SERVICE_URL;
+    if (patientServiceUrl) {
+      try {
+        const patientResponse = await axios.get<{ patient?: { name?: string } }>(
+          `${patientServiceUrl}/api/patients/internal/${encodeURIComponent(patientId)}`,
+          {
+            headers: {
+              Authorization: req.headers.authorization || '',
+            },
+            timeout: 8000,
+          },
+        );
+        const candidateName = patientResponse.data?.patient?.name;
+        if (typeof candidateName === 'string' && candidateName.trim()) {
+          patientName = candidateName.trim();
+        }
+      } catch {
+        // Non-blocking: prescription creation should not fail due to name lookup issues.
+      }
+    }
+
     const prescription = await Prescription.create({
       doctorId: req.user!.userId,
       doctorName: req.user!.name,
       patientId,
+      patientName,
       appointmentId,
       medications,
       notes,

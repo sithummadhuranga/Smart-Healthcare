@@ -30,6 +30,7 @@ interface DoctorSlot {
   date: string;
   startTime: string;
   endTime: string;
+  maxBookings?: number;
   isBooked: boolean;
 }
 
@@ -128,6 +129,28 @@ async function getDoctorData(doctorId: string): Promise<DoctorData> {
   return response.data;
 }
 
+async function getActiveSlotBookingCount(doctorUserId: string, slotId: string, excludeAppointmentId?: string): Promise<number> {
+  const values: string[] = [doctorUserId, slotId];
+  let query = `SELECT COUNT(*)::int AS count FROM appointments
+       WHERE doctor_id = $1
+         AND slot_id = $2
+         AND status NOT IN ('CANCELLED', 'REJECTED')`;
+
+  if (excludeAppointmentId) {
+    values.push(excludeAppointmentId);
+    query += ` AND id <> $${values.length}`;
+  }
+
+  const result = await pool.query<{ count: number }>(query, values);
+  const firstRow = result.rows[0] as unknown as { count?: number | string } | undefined;
+  if (firstRow && firstRow.count !== undefined) {
+    return Number(firstRow.count || 0);
+  }
+
+  // Backward-compatible fallback for tests/mocks that return arbitrary rows.
+  return result.rows.length;
+}
+
 export async function createAppointment(req: Request, res: Response): Promise<void> {
   try {
     const { doctorId, slotId, reason } = req.body as {
@@ -159,27 +182,16 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
       return;
     }
 
-    if (slot.isBooked) {
-      res.status(409).json({ error: 'This slot is already booked' });
-      return;
-    }
+    const doctorOwnerId = doctor.userId || doctorId;
+    const slotCapacity = Math.max(1, Number(slot.maxBookings) || 1);
+    const activeBookings = await getActiveSlotBookingCount(doctorOwnerId, slotId);
 
-    const conflict = await pool.query(
-      `SELECT id FROM appointments
-       WHERE doctor_id = $1
-         AND slot_id = $2
-         AND status NOT IN ('CANCELLED', 'REJECTED')
-       LIMIT 1`,
-      [doctorId, slotId]
-    );
-
-    if (conflict.rows.length > 0) {
-      res.status(409).json({ error: 'This slot is already booked' });
+    if (activeBookings >= slotCapacity) {
+      res.status(409).json({ error: 'This slot is already booked (fully booked)' });
       return;
     }
 
     const scheduledAt = combineScheduledAt(slot.date, slot.startTime);
-    const doctorOwnerId = doctor.userId || doctorId;
 
     let inserted;
     try {
@@ -191,7 +203,7 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
       );
     } catch (error) {
       if (isUniqueViolation(error)) {
-        res.status(409).json({ error: 'This slot is already booked' });
+        res.status(409).json({ error: 'This time slot cannot be booked right now' });
         return;
       }
       throw error;
@@ -264,28 +276,16 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
       return;
     }
 
-    if (slot.isBooked) {
-      res.status(409).json({ error: 'This slot is already booked' });
-      return;
-    }
+    const doctorOwnerId = doctor.userId || doctorId;
+    const slotCapacity = Math.max(1, Number(slot.maxBookings) || 1);
+    const activeBookings = await getActiveSlotBookingCount(doctorOwnerId, slotId, appointment.id);
 
-    const conflict = await pool.query(
-      `SELECT id FROM appointments
-       WHERE doctor_id = $1
-         AND slot_id = $2
-         AND id <> $3
-         AND status NOT IN ('CANCELLED', 'REJECTED')
-       LIMIT 1`,
-      [doctorId, slotId, appointment.id]
-    );
-
-    if (conflict.rows.length > 0) {
-      res.status(409).json({ error: 'This slot is already booked' });
+    if (activeBookings >= slotCapacity) {
+      res.status(409).json({ error: 'This slot is already booked (fully booked)' });
       return;
     }
 
     const scheduledAt = combineScheduledAt(slot.date, slot.startTime);
-    const doctorOwnerId = doctor.userId || doctorId;
     let updated;
     try {
       updated = await pool.query<AppointmentRow>(
@@ -303,7 +303,7 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
       );
     } catch (error) {
       if (isUniqueViolation(error)) {
-        res.status(409).json({ error: 'This slot is already booked' });
+        res.status(409).json({ error: 'This time slot cannot be booked right now' });
         return;
       }
       throw error;
@@ -637,6 +637,37 @@ export async function startAppointment(req: Request, res: Response): Promise<voi
   }
 }
 
+export async function startAppointmentByDoctor(req: Request, res: Response): Promise<void> {
+  try {
+    const appointment = await getAppointmentOr404(req.params.id, res);
+    if (!appointment) {
+      return;
+    }
+
+    if (req.user!.role !== 'admin' && appointment.doctor_id !== req.user!.userId) {
+      res.status(403).json({ error: 'You can only start your own appointments' });
+      return;
+    }
+
+    if (!canTransition(appointment.status, 'IN_PROGRESS')) {
+      res.status(400).json({ error: `Cannot start appointment from status ${appointment.status}` });
+      return;
+    }
+
+    const updated = await pool.query<AppointmentRow>(
+      `UPDATE appointments
+       SET status = 'IN_PROGRESS', updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [appointment.id]
+    );
+
+    res.status(200).json(mapRow(updated.rows[0]));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to start appointment' });
+  }
+}
+
 export async function markPrescriptionIssued(req: Request, res: Response): Promise<void> {
   try {
     const appointment = await getAppointmentOr404(req.params.id, res);
@@ -658,5 +689,43 @@ export async function markPrescriptionIssued(req: Request, res: Response): Promi
     res.status(200).json({ message: 'Prescription issued event published' });
   } catch (error) {
     res.status(500).json({ error: 'Failed to publish prescription event' });
+  }
+}
+
+export async function getSlotBookingCountsInternal(req: Request, res: Response): Promise<void> {
+  try {
+    const { doctorId, slotIds } = req.body as { doctorId?: string; slotIds?: string[] };
+    if (!doctorId || !Array.isArray(slotIds) || slotIds.length === 0) {
+      res.status(400).json({ error: 'doctorId and non-empty slotIds are required' });
+      return;
+    }
+
+    const sanitizedSlotIds = slotIds.filter((slotId) => typeof slotId === 'string' && slotId.trim().length > 0);
+    if (!sanitizedSlotIds.length) {
+      res.status(400).json({ error: 'slotIds must contain valid strings' });
+      return;
+    }
+
+    const result = await pool.query<{ slot_id: string; count: number }>(
+      `SELECT slot_id, COUNT(*)::int AS count
+       FROM appointments
+       WHERE doctor_id = $1
+         AND slot_id = ANY($2::text[])
+         AND status NOT IN ('CANCELLED', 'REJECTED')
+       GROUP BY slot_id`,
+      [doctorId, sanitizedSlotIds]
+    );
+
+    const counts: Record<string, number> = {};
+    for (const slotId of sanitizedSlotIds) {
+      counts[slotId] = 0;
+    }
+    for (const row of result.rows) {
+      counts[row.slot_id] = Number(row.count || 0);
+    }
+
+    res.status(200).json({ counts });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch slot booking counts' });
   }
 }

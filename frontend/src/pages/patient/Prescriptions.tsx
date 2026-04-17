@@ -13,9 +13,14 @@ interface Prescription {
   prescriptionId?: string;
   _id?: string;
   doctorId: string;
+  doctorName?: string;
   medications: Medication[];
-  notes: string;
-  issuedAt: string;
+  notes?: string;
+  issuedAt?: string;
+}
+
+interface PrescriptionResponse {
+  prescriptions?: Prescription[];
 }
 
 export default function Prescriptions() {
@@ -27,7 +32,10 @@ export default function Prescriptions() {
   useEffect(() => {
     api
       .get('/api/patients/prescriptions')
-      .then(({ data }) => setPrescriptions(Array.isArray(data) ? data : []))
+      .then(({ data }) => {
+        const payload = data as Prescription[] | PrescriptionResponse;
+        setPrescriptions(Array.isArray(payload) ? payload : payload.prescriptions ?? []);
+      })
       .catch(() => setError('Failed to load prescriptions.'))
       .finally(() => setLoading(false));
   }, []);
@@ -71,10 +79,14 @@ export default function Prescriptions() {
               <div key={rx.prescriptionId ?? rx._id ?? idx} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '22px 24px', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
                   <div>
-                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Doctor ID: <span style={{ color: 'var(--primary-dark)' }}>{rx.doctorId}</span></div>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                      Doctor: <span style={{ color: 'var(--primary-dark)' }}>{rx.doctorName || rx.doctorId}</span>
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 5 }}>
                       <svg width="12" height="12" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>
-                      {new Date(rx.issuedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                      {rx.issuedAt
+                        ? new Date(rx.issuedAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                        : 'Recently issued'}
                     </div>
                   </div>
                   <button onClick={() => window.print()} style={{ padding: '6px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text-secondary)', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>

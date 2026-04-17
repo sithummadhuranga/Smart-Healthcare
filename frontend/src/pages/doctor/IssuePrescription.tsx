@@ -13,10 +13,28 @@ interface Medication {
 interface PrescriptionRecord {
   _id?: string;
   patientId: string;
+  patientName?: string;
   appointmentId: string;
   medications: Medication[];
   notes?: string;
   issuedAt?: string;
+}
+
+interface DoctorAppointment {
+  id: string;
+  patientId: string;
+  status: string;
+  scheduledAt?: string;
+  scheduled_at?: string;
+}
+
+interface AppointmentOption {
+  appointmentId: string;
+  patientId: string;
+  patientName: string;
+  displayName: string;
+  status: string;
+  scheduledAt?: string;
 }
 
 export default function IssuePrescription() {
@@ -29,11 +47,15 @@ export default function IssuePrescription() {
   ]);
   const [loading, setLoading] = useState(false);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [optionsLoading, setOptionsLoading] = useState(true);
   const [prescriptions, setPrescriptions] = useState<PrescriptionRecord[]>([]);
+  const [appointmentOptions, setAppointmentOptions] = useState<AppointmentOption[]>([]);
+  const [patientNameById, setPatientNameById] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     void fetchPrescriptions();
+    void fetchAppointmentOptions();
   }, []);
 
   async function fetchPrescriptions() {
@@ -45,6 +67,75 @@ export default function IssuePrescription() {
       setToast({ message: 'Failed to load prescriptions.', type: 'error' });
     } finally {
       setHistoryLoading(false);
+    }
+  }
+
+  async function fetchAppointmentOptions() {
+    setOptionsLoading(true);
+    try {
+      const { data } = await api.get('/api/appointments');
+      const allAppointments: DoctorAppointment[] = Array.isArray(data) ? data : data.appointments ?? [];
+
+      const relevant = allAppointments.filter((appt) => ['PAID', 'IN_PROGRESS', 'COMPLETED'].includes(appt.status));
+      const uniqueByAppointment = new Map<string, DoctorAppointment>();
+      for (const appointment of relevant) {
+        uniqueByAppointment.set(appointment.id, appointment);
+      }
+
+      const uniquePatientIds = Array.from(
+        new Set(Array.from(uniqueByAppointment.values()).map((appt) => appt.patientId).filter(Boolean)),
+      );
+
+      const nameMap: Record<string, string> = {};
+      await Promise.all(uniquePatientIds.map(async (patientId) => {
+        try {
+          const { data: patientData } = await api.get(`/api/patients/internal/${patientId}`);
+          const patientName = patientData?.patient?.name;
+          if (typeof patientName === 'string' && patientName.trim()) {
+            nameMap[patientId] = patientName.trim();
+          }
+        } catch {
+          // Fall back to patient ID if patient profile lookup fails.
+        }
+      }));
+
+      setPatientNameById(nameMap);
+      const fallbackLabelByPatientId: Record<string, string> = {};
+      let fallbackIndex = 1;
+      for (const patientId of uniquePatientIds) {
+        if (!nameMap[patientId]) {
+          fallbackLabelByPatientId[patientId] = `Patient ${fallbackIndex}`;
+          fallbackIndex += 1;
+        }
+      }
+
+      const statusLabel: Record<string, string> = {
+        IN_PROGRESS: 'In Progress',
+        COMPLETED: 'Completed',
+        PAID: 'Paid',
+      };
+
+      setAppointmentOptions(
+        Array.from(uniqueByAppointment.values())
+          .sort((a, b) => new Date((b.scheduledAt || b.scheduled_at || '')).getTime() - new Date((a.scheduledAt || a.scheduled_at || '')).getTime())
+          .map((appt) => {
+            const patientName = nameMap[appt.patientId] || fallbackLabelByPatientId[appt.patientId] || 'Patient';
+            const when = appt.scheduledAt || appt.scheduled_at;
+            const whenLabel = when ? new Date(when).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'No schedule';
+            return {
+              appointmentId: appt.id,
+              patientId: appt.patientId,
+              patientName,
+              displayName: `${patientName} · ${whenLabel} · ${statusLabel[appt.status] || appt.status}`,
+              status: appt.status,
+              scheduledAt: when,
+            };
+          }),
+      );
+    } catch {
+      setToast({ message: 'Failed to load appointment list for prescription form.', type: 'error' });
+    } finally {
+      setOptionsLoading(false);
     }
   }
 
@@ -73,6 +164,7 @@ export default function IssuePrescription() {
         notes,
       });
       await fetchPrescriptions();
+      await fetchAppointmentOptions();
       setToast({ message: 'Prescription issued successfully!', type: 'success' });
       setTimeout(() => navigate('/doctor/dashboard'), 1500);
     } catch {
@@ -87,6 +179,12 @@ export default function IssuePrescription() {
     padding: '10px 12px', fontSize: 13, fontFamily: 'var(--font-body)',
     color: 'var(--text-primary)', background: 'var(--bg)', outline: 'none',
   };
+
+  function handleAppointmentSelect(nextAppointmentId: string) {
+    setAppointmentId(nextAppointmentId);
+    const selected = appointmentOptions.find((option) => option.appointmentId === nextAppointmentId);
+    setPatientId(selected?.patientId || '');
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -118,10 +216,14 @@ export default function IssuePrescription() {
               {prescriptions.slice(0, 5).map((prescription) => (
                 <div key={prescription._id || `${prescription.appointmentId}-${prescription.patientId}`} style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '12px 14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
-                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>Patient: {prescription.patientId}</div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
+                      Patient: {prescription.patientName || patientNameById[prescription.patientId] || 'Patient'}
+                    </div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{prescription.issuedAt ? new Date(prescription.issuedAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : 'Recently issued'}</div>
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>Appointment: {prescription.appointmentId}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Consultation Ref: {prescription.appointmentId.slice(0, 8)}…
+                  </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {prescription.medications.map((medication) => (
                       <span key={`${medication.name}-${medication.dosage}-${medication.frequency}`} style={{ background: 'var(--primary-50)', color: 'var(--primary-dark)', fontSize: 11, fontWeight: 600, padding: '4px 8px', borderRadius: 10 }}>
@@ -137,12 +239,26 @@ export default function IssuePrescription() {
 
         <form onSubmit={handleSubmit} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 28, boxShadow: 'var(--shadow-sm)', display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Patient ID</label>
-            <input required value={patientId} onChange={(e) => setPatientId(e.target.value)} placeholder="Patient user ID" style={inputStyle} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Appointment ID</label>
-            <input required value={appointmentId} onChange={(e) => setAppointmentId(e.target.value)} placeholder="Appointment UUID" style={inputStyle} />
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 13, color: 'var(--text-primary)', marginBottom: 6 }}>Consultation</label>
+            <select required value={appointmentId} onChange={(e) => handleAppointmentSelect(e.target.value)} style={inputStyle}>
+              <option value="">Select a patient consultation</option>
+              {appointmentOptions.map((option) => (
+                <option key={option.appointmentId} value={option.appointmentId}>
+                  {option.displayName}
+                </option>
+              ))}
+            </select>
+            {optionsLoading && <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>Loading eligible consultations…</div>}
+            {!optionsLoading && appointmentOptions.length === 0 && (
+              <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                No completed or active consultations found yet.
+              </div>
+            )}
+            {patientId && (
+              <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)' }}>
+                Selected Patient: <strong style={{ color: 'var(--text-primary)' }}>{patientNameById[patientId] || patientId}</strong>
+              </div>
+            )}
           </div>
 
           <div>

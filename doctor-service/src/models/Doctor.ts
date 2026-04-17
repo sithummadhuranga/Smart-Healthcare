@@ -5,6 +5,8 @@ export interface DoctorSlot {
   date: Date;
   startTime: string;
   endTime: string;
+  consultationType: 'ONLINE' | 'PHYSICAL';
+  maxBookings: number;
   isBooked: boolean;
 }
 
@@ -29,6 +31,8 @@ const SlotSchema = new Schema<DoctorSlot>(
     date: { type: Date, required: true },
     startTime: { type: String, required: true },
     endTime: { type: String, required: true },
+    consultationType: { type: String, enum: ['ONLINE', 'PHYSICAL'], required: true, default: 'ONLINE' },
+    maxBookings: { type: Number, required: true, default: 1, min: 1 },
     isBooked: { type: Boolean, default: false },
   },
   { _id: false }
