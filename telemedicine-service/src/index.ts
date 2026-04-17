@@ -10,8 +10,25 @@ const app = express();
 const PORT = Number(process.env.TELEMEDICINE_SERVICE_PORT) || 3005;
 const SERVICE_NAME = 'telemedicine-service';
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost')
+  .split(',')
+  .map((origin) => origin.trim());
+
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS: origin ${origin} not allowed`));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+  }),
+);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customSiteTitle: 'Telemedicine Service API Docs',
   swaggerOptions: { persistAuthorization: true },
