@@ -185,7 +185,7 @@ export default function PaymentPage() {
           <div className="animate-fade-in" style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #A7F3D0', padding: 28, boxShadow: 'var(--shadow-sm)', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>Already Paid</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>This appointment has already been paid for. You can join the video consultation when the doctor starts the session.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>This appointment has already been paid for. You can join the video consultation when the doctor starts the session, and appointment updates will use the contact details saved on your profile.</p>
             <button onClick={() => navigate('/patient/appointments')} style={{ padding: '12px 28px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
               Go to Appointments
             </button>
@@ -194,13 +194,18 @@ export default function PaymentPage() {
           <div className="animate-fade-in" style={{ background: '#fff', borderRadius: 14, border: '1.5px solid #A7F3D0', padding: 28, boxShadow: '0 4px 16px rgba(5,150,105,0.1)', textAlign: 'center' }}>
             <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
             <h2 style={{ fontSize: 18, fontWeight: 700, color: '#065F46', marginBottom: 8 }}>Payment Successful!</h2>
-            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Your consultation has been paid. The doctor will start the session at the scheduled time. You'll be able to join the video call from your appointments page.</p>
+            <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 20 }}>Your consultation has been paid. The doctor will start the session at the scheduled time, and follow-up updates will use the email and phone saved on your profile.</p>
             <button onClick={() => navigate('/patient/appointments')} style={{ padding: '12px 28px', borderRadius: 10, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 14 }}>
               Go to Appointments
             </button>
           </div>
         ) : paymentData ? (
           <div className="animate-fade-in" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: 28, boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ background: 'var(--primary-light)', border: '1px solid #99F6E4', borderRadius: 10, padding: '12px 14px', marginBottom: 18 }}>
+              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--primary-dark)' }}>
+                Payment confirmations go to your saved email, and SMS updates use the phone number in your patient profile.
+              </p>
+            </div>
             <Elements stripe={stripePromise} options={{ clientSecret: paymentData.clientSecret }}>
               <CheckoutForm
                 appointmentId={appointmentId!}

@@ -1,14 +1,53 @@
 import sgMail from '@sendgrid/mail';
 
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@healthcare.local';
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const DEFAULT_FROM_EMAIL = 'noreply@healthcare.local';
+const DEFAULT_FROM_NAME = 'Smart Healthcare';
+const FROM_EMAIL = process.env.FROM_EMAIL?.trim() || '';
+const FROM_NAME = process.env.FROM_NAME?.trim() || DEFAULT_FROM_NAME;
+const REPLY_TO_EMAIL = process.env.REPLY_TO_EMAIL?.trim() || FROM_EMAIL;
+const REPLY_TO_NAME = process.env.REPLY_TO_NAME?.trim() || FROM_NAME;
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY?.trim();
 
-function initializeSendGrid(): boolean {
-  if (!SENDGRID_API_KEY) {
+type SendGridErrorItem = {
+  message?: string;
+  field?: string;
+  help?: string;
+};
+
+type SendGridErrorLike = {
+  response?: {
+    body?: {
+      errors?: SendGridErrorItem[];
+    };
+  };
+};
+
+function hasValidSenderEmail(email: string): boolean {
+  if (!email || email === DEFAULT_FROM_EMAIL) {
     return false;
   }
 
-  sgMail.setApiKey(SENDGRID_API_KEY);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && !email.toLowerCase().endsWith('.local');
+}
+
+function getEmailConfigurationIssue(): string | null {
+  if (!SENDGRID_API_KEY) {
+    return 'missing SENDGRID_API_KEY';
+  }
+
+  if (!hasValidSenderEmail(FROM_EMAIL)) {
+    return 'missing verified FROM_EMAIL';
+  }
+
+  return null;
+}
+
+function initializeSendGrid(): boolean {
+  if (getEmailConfigurationIssue()) {
+    return false;
+  }
+
+  sgMail.setApiKey(SENDGRID_API_KEY!);
   return true;
 }
 
@@ -22,9 +61,43 @@ export function getEmailProviderStatus(): 'active' | 'degraded' {
   return sendGridReady ? 'active' : 'degraded';
 }
 
+export function getEmailProviderIssue(): string | null {
+  return getEmailConfigurationIssue();
+}
+
+function getSendGridErrorMessage(error: unknown): string {
+  const fallbackMessage = error instanceof Error ? error.message : 'Failed to send email';
+  const sendGridErrors = (error as SendGridErrorLike)?.response?.body?.errors;
+
+  if (!Array.isArray(sendGridErrors) || sendGridErrors.length === 0) {
+    return fallbackMessage;
+  }
+
+  return sendGridErrors
+    .map((item) => {
+      const details = [item.message, item.field ? `field=${item.field}` : undefined, item.help]
+        .filter((value): value is string => Boolean(value));
+
+      return details.join(' | ');
+    })
+    .filter((value) => value.length > 0)
+    .join('; ') || fallbackMessage;
+}
+
+function buildEmailIdentity(email: string, name: string): { email: string; name?: string } {
+  return name ? { email, name } : { email };
+}
+
+function getReplyToIdentity(): { email: string; name?: string } {
+  const replyToEmail = hasValidSenderEmail(REPLY_TO_EMAIL) ? REPLY_TO_EMAIL : FROM_EMAIL;
+  const replyToName = REPLY_TO_NAME || FROM_NAME;
+
+  return buildEmailIdentity(replyToEmail, replyToName);
+}
+
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   if (!sendGridReady) {
-    throw new Error('SENDGRID_API_KEY is not configured');
+    throw new Error(getEmailConfigurationIssue() || 'Email provider is not configured');
   }
 
   if (!to) {
@@ -34,15 +107,17 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
   try {
     await sgMail.send({
       to,
-      from: FROM_EMAIL,
+      from: buildEmailIdentity(FROM_EMAIL, FROM_NAME),
+      replyTo: getReplyToIdentity(),
       subject,
       html,
     });
 
     console.log(`[notification-service] Email sent to ${to}`);
   } catch (error) {
-    console.error('[notification-service] Failed to send email', error);
-    throw error;
+    const providerMessage = getSendGridErrorMessage(error);
+    console.error(`[notification-service] Failed to send email: ${providerMessage}`);
+    throw new Error(providerMessage);
   }
 }
 
@@ -64,6 +139,36 @@ export async function sendAppointmentBookedEmail(
   `;
 
   await sendEmail(patientEmail, subject, html);
+}
+
+export async function sendPatientWelcomeEmail(
+  patientEmail: string,
+  patientName: string
+): Promise<void> {
+  const subject = 'Welcome to Smart Healthcare';
+  const html = `
+    <h2>Welcome to Smart Healthcare</h2>
+    <p>Hi ${patientName},</p>
+    <p>Your patient account was created successfully.</p>
+    <p>You can now sign in to manage appointments, reports, and prescriptions.</p>
+  `;
+
+  await sendEmail(patientEmail, subject, html);
+}
+
+export async function sendDoctorRegistrationReceivedEmail(
+  doctorEmail: string,
+  doctorName: string
+): Promise<void> {
+  const subject = 'Doctor Registration Received';
+  const html = `
+    <h2>Registration Received</h2>
+    <p>Hi ${doctorName},</p>
+    <p>Your doctor account has been created successfully.</p>
+    <p>An administrator will review your account before you can sign in.</p>
+  `;
+
+  await sendEmail(doctorEmail, subject, html);
 }
 
 export async function sendDoctorNewAppointmentEmail(

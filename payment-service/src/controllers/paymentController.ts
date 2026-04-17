@@ -13,11 +13,21 @@ type AppointmentDetails = {
   doctorId?: string;
   doctor_id?: string;
   status?: string;
+  scheduledAt?: string | null;
+  scheduled_at?: string | null;
 };
 
 type DoctorDetails = {
+  name?: string;
+  email?: string;
   consultationFee?: number | string;
   consultation_fee?: number | string;
+};
+
+type PatientDetails = {
+  name?: string;
+  email?: string;
+  phone?: string;
 };
 
 type PaymentRow = {
@@ -360,6 +370,103 @@ const fetchConsultationFee = async (doctorId: string): Promise<number> => {
   }
 };
 
+const ensurePatientProfile = async (authorization?: string): Promise<void> => {
+  if (!authorization) {
+    return;
+  }
+
+  const patientServiceUrl = getServiceUrl('PATIENT_SERVICE_URL', 'http://patient-service:3002');
+
+  try {
+    await axios.get(`${patientServiceUrl}/api/patients/profile`, {
+      headers: {
+        Authorization: authorization,
+      },
+      timeout: 5_000,
+    });
+  } catch (error) {
+    console.warn('[payment-service] Failed to ensure patient profile exists');
+  }
+};
+
+const fetchDoctorProfile = async (doctorId: string): Promise<DoctorDetails | null> => {
+  const doctorServiceUrl = getServiceUrl('DOCTOR_SERVICE_URL', 'http://doctor-service:3003');
+
+  try {
+    const response = await axios.get<DoctorDetails>(
+      `${doctorServiceUrl}/api/doctors/internal/user/${encodeURIComponent(doctorId)}`,
+      {
+        timeout: 5_000,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    return null;
+  }
+};
+
+const fetchPatientProfile = async (userId: string): Promise<PatientDetails | null> => {
+  const patientServiceUrl = getServiceUrl('PATIENT_SERVICE_URL', 'http://patient-service:3002');
+
+  try {
+    const response = await axios.get(`${patientServiceUrl}/api/patients/internal/${encodeURIComponent(userId)}`, {
+      timeout: 5_000,
+    });
+
+    const payload = response.data as { patient?: PatientDetails } & PatientDetails;
+    return payload.patient ?? payload;
+  } catch (error) {
+    return null;
+  }
+};
+
+const buildPaymentIntentMetadata = (input: {
+  appointmentId: string;
+  patientId: string;
+  paymentId: string;
+  doctorId: string;
+  scheduledAt?: string | null;
+  patientName?: string;
+  patientEmail?: string;
+  patientPhone?: string;
+  doctorName?: string;
+  doctorEmail?: string;
+}): Record<string, string> => {
+  const metadata: Record<string, string> = {
+    appointmentId: input.appointmentId,
+    patientId: input.patientId,
+    paymentId: input.paymentId,
+    doctorId: input.doctorId,
+  };
+
+  if (input.scheduledAt) {
+    metadata.scheduledAt = input.scheduledAt;
+  }
+
+  if (input.patientName) {
+    metadata.patientName = input.patientName;
+  }
+
+  if (input.patientEmail) {
+    metadata.patientEmail = input.patientEmail;
+  }
+
+  if (input.patientPhone) {
+    metadata.patientPhone = input.patientPhone;
+  }
+
+  if (input.doctorName) {
+    metadata.doctorName = input.doctorName;
+  }
+
+  if (input.doctorEmail) {
+    metadata.doctorEmail = input.doctorEmail;
+  }
+
+  return metadata;
+};
+
 const markAppointmentPaidInternal = async (appointmentId: string): Promise<void> => {
   try {
     const appointmentServiceUrl = getServiceUrl('APPOINTMENT_SERVICE_URL', 'http://appointment-service:3004');
@@ -494,6 +601,13 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
     }
 
     const stripe = getStripeClient();
+    await ensurePatientProfile(req.headers.authorization);
+
+    const [patientProfile, doctorProfile] = await Promise.all([
+      fetchPatientProfile(user.userId),
+      fetchDoctorProfile(appointmentDoctorId),
+    ]);
+
     const consultationFee = await fetchConsultationFee(appointmentDoctorId);
     const chargeAmountCents = getBillableAmountCents(consultationFee, DEFAULT_CURRENCY);
     const chargeAmount = chargeAmountCents / 100;
@@ -542,11 +656,18 @@ export const createPaymentIntent = async (req: AuthenticatedRequest, res: Respon
           {
             amount: chargeAmountCents,
             currency: DEFAULT_CURRENCY,
-            metadata: {
+            metadata: buildPaymentIntentMetadata({
               appointmentId,
               patientId: user.userId,
               paymentId: targetPayment.id,
-            },
+              doctorId: appointmentDoctorId,
+              scheduledAt: appointment.scheduledAt || appointment.scheduled_at,
+              patientName: patientProfile?.name,
+              patientEmail: patientProfile?.email || user.email,
+              patientPhone: patientProfile?.phone,
+              doctorName: doctorProfile?.name,
+              doctorEmail: doctorProfile?.email,
+            }),
           },
           {
             idempotencyKey: getStripeIdempotencyKey(appointmentId, user.userId, targetPayment.id),
@@ -780,9 +901,16 @@ export const handleWebhook = async (req: AuthenticatedRequest, res: Response): P
           await publishEvent('payment.confirmed', {
             appointmentId,
             patientId,
+            doctorId: supportedPaymentEvent.metadata?.doctorId,
             amount: supportedPaymentEvent.amount / 100,
             currency: supportedPaymentEvent.currency,
             paymentIntentId: stripePaymentIntentId,
+            scheduledAt: supportedPaymentEvent.metadata?.scheduledAt,
+            patientName: supportedPaymentEvent.metadata?.patientName,
+            patientEmail: supportedPaymentEvent.metadata?.patientEmail,
+            patientPhone: supportedPaymentEvent.metadata?.patientPhone,
+            doctorName: supportedPaymentEvent.metadata?.doctorName,
+            doctorEmail: supportedPaymentEvent.metadata?.doctorEmail,
           });
 
           console.log(`[payment-service] Payment succeeded for appointment ${appointmentId}`);

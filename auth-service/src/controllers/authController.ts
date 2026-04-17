@@ -6,6 +6,7 @@ import type { UserRole } from '../models/User';
 import { JwtPayload } from '../middleware/verifyToken';
 import logger from '../logger';
 import { recordAuditEvent } from '../services/auditLogService';
+import { publishNotificationEvent } from '../services/rabbitmqPublisher';
 
 const BCRYPT_SALT_ROUNDS = 12;
 const COOKIE_NAME = 'refreshToken';
@@ -113,12 +114,23 @@ export async function register(req: Request, res: Response): Promise<void> {
       metadata: { role: user.role },
     });
 
+    const emailNotificationQueued = await publishNotificationEvent('user.registered', {
+      userId: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+
     res.status(201).json({
       userId: user._id.toString(),
       message:
         role === 'doctor'
-          ? 'Registration successful. Await admin verification before you can login.'
-          : 'Registration successful',
+          ? emailNotificationQueued
+            ? 'Registration successful. Check your email for next steps while awaiting admin verification.'
+            : 'Registration successful. Await admin verification before you can login.'
+          : emailNotificationQueued
+            ? 'Registration successful. Check your email for a welcome message.'
+            : 'Registration successful',
     });
   } catch (err) {
     logger.error(`register error: ${(err as Error).message}`);

@@ -38,8 +38,22 @@ interface DoctorData {
   _id: string;
   userId?: string;
   name: string;
+  email?: string;
+  phone?: string;
   specialty?: string;
   availableSlots?: DoctorSlot[];
+}
+
+interface PatientNotificationData {
+  name?: string;
+  email?: string;
+  phone?: string;
+}
+
+interface DoctorNotificationData {
+  name?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface PgError extends Error {
@@ -129,26 +143,65 @@ async function getDoctorData(doctorId: string): Promise<DoctorData> {
   return response.data;
 }
 
-async function getActiveSlotBookingCount(doctorUserId: string, slotId: string, excludeAppointmentId?: string): Promise<number> {
-  const values: string[] = [doctorUserId, slotId];
-  let query = `SELECT COUNT(*)::int AS count FROM appointments
-       WHERE doctor_id = $1
-         AND slot_id = $2
-         AND status NOT IN ('CANCELLED', 'REJECTED')`;
-
-  if (excludeAppointmentId) {
-    values.push(excludeAppointmentId);
-    query += ` AND id <> $${values.length}`;
+async function ensurePatientProfile(authorization?: string): Promise<void> {
+  if (!authorization) {
+    return;
   }
 
-  const result = await pool.query<{ count: number }>(query, values);
-  const firstRow = result.rows[0] as unknown as { count?: number | string } | undefined;
-  if (firstRow && firstRow.count !== undefined) {
-    return Number(firstRow.count || 0);
-  }
+  const patientServiceUrl = process.env.PATIENT_SERVICE_URL || 'http://patient-service:3002';
 
-  // Backward-compatible fallback for tests/mocks that return arbitrary rows.
-  return result.rows.length;
+  try {
+    await axios.get(`${patientServiceUrl}/api/patients/profile`, {
+      headers: {
+        Authorization: authorization,
+      },
+      timeout: 8000,
+    });
+  } catch (error) {
+    console.warn('[appointment-service] Failed to ensure patient profile exists', error);
+  }
+}
+
+async function getPatientNotificationData(userId: string): Promise<PatientNotificationData | null> {
+  const patientServiceUrl = process.env.PATIENT_SERVICE_URL || 'http://patient-service:3002';
+
+  try {
+    const response = await axios.get(`${patientServiceUrl}/api/patients/internal/${encodeURIComponent(userId)}`, {
+      timeout: 8000,
+    });
+
+    const payload = response.data as { patient?: PatientNotificationData } & PatientNotificationData;
+    const patient = payload.patient ?? payload;
+
+    return {
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getDoctorNotificationData(userId: string): Promise<DoctorNotificationData | null> {
+  const doctorServiceUrl = process.env.DOCTOR_SERVICE_URL || 'http://doctor-service:3003';
+
+  try {
+    const response = await axios.get<DoctorData>(
+      `${doctorServiceUrl}/api/doctors/internal/user/${encodeURIComponent(userId)}`,
+      {
+        timeout: 8000,
+      }
+    );
+
+    return {
+      name: response.data.name,
+      email: response.data.email,
+      phone: response.data.phone,
+    };
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function createAppointment(req: Request, res: Response): Promise<void> {
@@ -212,6 +265,13 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
     const appointment = inserted.rows[0];
 
     try {
+      await ensurePatientProfile(req.headers.authorization as string | undefined);
+
+      const [patientContact, doctorContact] = await Promise.all([
+        getPatientNotificationData(appointment.patient_id),
+        getDoctorNotificationData(appointment.doctor_id),
+      ]);
+
       await publishNotificationEvent({
         event: 'appointment.booked',
         appointmentId: appointment.id,
@@ -219,6 +279,11 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
         doctorId: appointment.doctor_id,
         slotId: appointment.slot_id,
         scheduledAt: appointment.scheduled_at,
+        patientName: patientContact?.name || req.user!.name,
+        patientEmail: patientContact?.email || req.user!.email,
+        patientPhone: patientContact?.phone,
+        doctorName: doctorContact?.name || doctor.name,
+        doctorEmail: doctorContact?.email,
       });
     } catch (error) {
       console.error('[appointment-service] Failed to publish appointment.booked', error);
@@ -405,12 +470,24 @@ export async function cancelAppointment(req: Request, res: Response): Promise<vo
     );
 
     try {
+      const [patientContact, doctorContact] = await Promise.all([
+        getPatientNotificationData(appointment.patient_id),
+        getDoctorNotificationData(appointment.doctor_id),
+      ]);
+
       await publishNotificationEvent({
         event: 'appointment.cancelled',
         appointmentId: appointment.id,
         patientId: appointment.patient_id,
         doctorId: appointment.doctor_id,
         cancelledBy: 'patient',
+        scheduledAt: appointment.scheduled_at,
+        patientName: patientContact?.name || req.user!.name,
+        patientEmail: patientContact?.email || req.user!.email,
+        patientPhone: patientContact?.phone,
+        doctorName: doctorContact?.name,
+        doctorEmail: doctorContact?.email,
+        doctorPhone: doctorContact?.phone,
       });
     } catch (error) {
       console.error('[appointment-service] Failed to publish appointment.cancelled', error);
@@ -448,11 +525,18 @@ export async function acceptAppointment(req: Request, res: Response): Promise<vo
     );
 
     try {
+      const patientContact = await getPatientNotificationData(appointment.patient_id);
+
       await publishNotificationEvent({
         event: 'appointment.confirmed',
         appointmentId: appointment.id,
         patientId: appointment.patient_id,
         doctorId: appointment.doctor_id,
+        patientName: patientContact?.name,
+        patientEmail: patientContact?.email,
+        patientPhone: patientContact?.phone,
+        doctorName: req.user!.name,
+        doctorEmail: req.user!.email,
       });
     } catch (error) {
       console.error('[appointment-service] Failed to publish appointment.confirmed', error);
@@ -523,11 +607,17 @@ export async function completeAppointment(req: Request, res: Response): Promise<
     );
 
     try {
+      const patientContact = await getPatientNotificationData(appointment.patient_id);
+
       await publishNotificationEvent({
         event: 'consultation.completed',
         appointmentId: appointment.id,
         patientId: appointment.patient_id,
         doctorId: appointment.doctor_id,
+        patientName: patientContact?.name,
+        patientEmail: patientContact?.email,
+        doctorName: req.user!.name,
+        doctorEmail: req.user!.email,
       });
     } catch (error) {
       console.error('[appointment-service] Failed to publish consultation.completed', error);
@@ -676,11 +766,17 @@ export async function markPrescriptionIssued(req: Request, res: Response): Promi
     }
 
     try {
+      const patientContact = await getPatientNotificationData(appointment.patient_id);
+
       await publishNotificationEvent({
         event: 'prescription.issued',
         appointmentId: appointment.id,
         patientId: appointment.patient_id,
         doctorId: appointment.doctor_id,
+        patientName: patientContact?.name,
+        patientEmail: patientContact?.email,
+        doctorName: req.user!.name,
+        doctorEmail: req.user!.email,
       });
     } catch (error) {
       console.error('[appointment-service] Failed to publish prescription.issued', error);
