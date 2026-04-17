@@ -56,8 +56,14 @@ export default function VerifyDoctors() {
           <div style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)', fontSize: 14 }}>Loading…</div>
         ) : doctors.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0', color: 'var(--text-muted)' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>✅</div>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>All caught up! No pending verifications.</p>
+            <div style={{ width: 80, height: 80, borderRadius: 20, background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="#059669" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9 12l2 2 4-4" stroke="#059669" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <p style={{ fontWeight: 600, fontSize: 15, color: 'var(--text-primary)', margin: '0 0 6px' }}>All caught up!</p>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>No pending doctor verifications at this time.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
