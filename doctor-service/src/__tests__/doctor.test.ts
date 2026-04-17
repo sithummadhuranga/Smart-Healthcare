@@ -1,5 +1,6 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'doctor-test-secret';
@@ -21,8 +22,11 @@ jest.mock('../models/Prescription', () => ({
   Prescription: {
     create: jest.fn(),
     find: jest.fn(),
+    findOne: jest.fn(),
   },
 }));
+
+jest.mock('axios');
 
 const mockedDoctor = Doctor as unknown as {
   find: jest.Mock;
@@ -34,7 +38,10 @@ const mockedDoctor = Doctor as unknown as {
 const mockedPrescription = Prescription as unknown as {
   create: jest.Mock;
   find: jest.Mock;
+  findOne: jest.Mock;
 };
+
+const mockedAxiosGet = axios.get as jest.Mock;
 
 function authHeader(role: 'patient' | 'doctor' | 'admin', userId = 'u1'): string {
   const token = jwt.sign(
@@ -49,6 +56,8 @@ function authHeader(role: 'patient' | 'doctor' | 'admin', userId = 'u1'): string
 describe('doctor service routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.APPOINTMENT_SERVICE_URL = 'http://appointment-service:3004';
+    process.env.PATIENT_SERVICE_URL = 'http://patient-service:3002';
   });
 
   it('lists public doctors', async () => {
@@ -108,6 +117,28 @@ describe('doctor service routes', () => {
   });
 
   it('creates prescription with valid payload', async () => {
+    mockedAxiosGet
+      .mockResolvedValueOnce({
+        data: {
+          id: 'a1',
+          patientId: 'p1',
+          doctorId: 'doc-1',
+          status: 'COMPLETED',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          patient: {
+            name: 'Test Patient',
+          },
+        },
+      });
+
+    mockedPrescription.findOne.mockReturnValue({
+      select: () => ({
+        lean: async () => null,
+      }),
+    });
     mockedPrescription.create.mockResolvedValue({
       _id: 'pr-1',
       doctorId: 'doc-1',

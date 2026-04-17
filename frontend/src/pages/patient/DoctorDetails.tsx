@@ -9,6 +9,7 @@ interface Slot {
   date: string;
   startTime: string;
   endTime?: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
   isBooked: boolean;
 }
 
@@ -46,15 +47,16 @@ export default function DoctorDetails() {
     }
   }
 
-  async function bookSlot(slotId: string) {
+  async function bookSlot(slot: Slot) {
     if (!doctor) return;
 
-    setBooking(slotId);
+    setBooking(slot.slotId);
     try {
+      const consultationLabel = slot.consultationType === 'PHYSICAL' ? 'physical' : 'online';
       await api.post('/api/appointments', {
         doctorId: doctor._id,
-        slotId,
-        reason: `Appointment booked with Dr. ${doctor.name}`,
+        slotId: slot.slotId,
+        reason: `${consultationLabel} appointment booked with Dr. ${doctor.name}`,
       });
       setToast({ message: `Appointment booked with Dr. ${doctor.name}.`, type: 'success' });
       await fetchDoctor();
@@ -118,9 +120,14 @@ export default function DoctorDetails() {
                         <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>{new Date(slot.date).toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
                         <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{slot.startTime}{slot.endTime ? ` - ${slot.endTime}` : ''}</div>
                       </div>
-                      <button onClick={() => bookSlot(slot.slotId)} disabled={booking === slot.slotId} style={{ padding: '8px 14px', borderRadius: 8, background: booking === slot.slotId ? 'var(--border)' : 'var(--primary)', color: '#fff', border: 'none', cursor: booking === slot.slotId ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 12 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 10, background: slot.consultationType === 'PHYSICAL' ? '#FEF3C7' : '#DBEAFE', color: slot.consultationType === 'PHYSICAL' ? '#92400E' : '#1E40AF' }}>
+                          {slot.consultationType === 'PHYSICAL' ? 'Physical' : 'Online'}
+                        </span>
+                      <button onClick={() => bookSlot(slot)} disabled={booking === slot.slotId} style={{ padding: '8px 14px', borderRadius: 8, background: booking === slot.slotId ? 'var(--border)' : 'var(--primary)', color: '#fff', border: 'none', cursor: booking === slot.slotId ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 12 }}>
                         {booking === slot.slotId ? 'Booking…' : 'Book'}
                       </button>
+                      </div>
                     </div>
                   ))}
                 </div>

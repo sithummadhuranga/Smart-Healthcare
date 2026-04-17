@@ -8,10 +8,12 @@ import {
   getAllAppointmentsAdmin,
   getAppointmentById,
   getAppointments,
+  getSlotBookingCountsInternal,
   markAppointmentPaid,
   markPrescriptionIssued,
   rejectAppointment,
   startAppointment,
+  startAppointmentByDoctor,
 } from '../controllers/appointmentController';
 import {
   requireInternalApiKey,
@@ -30,9 +32,11 @@ router.patch('/:id/cancel', verifyToken, requireRole('patient', 'admin'), cancel
 router.patch('/:id/accept', verifyToken, requireRole('doctor', 'admin'), acceptAppointment);
 router.patch('/:id/reject', verifyToken, requireRole('doctor', 'admin'), rejectAppointment);
 router.patch('/:id/complete', verifyToken, requireRole('doctor', 'admin'), completeAppointment);
+router.patch('/:id/start-visit', verifyToken, requireRole('doctor', 'admin'), startAppointmentByDoctor);
 
 router.patch('/:id/pay', requireInternalApiKey, markAppointmentPaid);
 router.patch('/:id/start', requireInternalApiKey, startAppointment);
 router.post('/:id/prescription-issued', requireInternalApiKey, markPrescriptionIssued);
+router.post('/internal/slot-bookings', getSlotBookingCountsInternal);
 
 export default router;

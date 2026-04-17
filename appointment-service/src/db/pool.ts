@@ -21,9 +21,7 @@ const schemaStatements = [
   'CREATE INDEX IF NOT EXISTS idx_app_doctor ON appointments (doctor_id);',
   'CREATE INDEX IF NOT EXISTS idx_app_status ON appointments (status);',
   'CREATE INDEX IF NOT EXISTS idx_app_slot ON appointments (doctor_id, slot_id);',
-  `CREATE UNIQUE INDEX IF NOT EXISTS uq_active_doctor_slot
-     ON appointments (doctor_id, slot_id)
-     WHERE status NOT IN ('CANCELLED', 'REJECTED');`,
+  'DROP INDEX IF EXISTS uq_active_doctor_slot;',
   `CREATE OR REPLACE FUNCTION update_appointments_updated_at()
      RETURNS TRIGGER AS $$
      BEGIN

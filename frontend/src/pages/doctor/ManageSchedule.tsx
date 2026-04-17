@@ -9,6 +9,10 @@ interface Slot {
   date: string;
   startTime: string;
   endTime: string;
+  consultationType: 'ONLINE' | 'PHYSICAL';
+  maxBookings?: number;
+  bookedCount?: number;
+  remainingCapacity?: number;
   isBooked: boolean;
 }
 
@@ -25,6 +29,9 @@ export default function ManageSchedule() {
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
+  const [consultationType, setConsultationType] = useState<'ONLINE' | 'PHYSICAL'>('ONLINE');
+  const [maxBookings, setMaxBookings] = useState('1');
+  const [slotDurationMinutes, setSlotDurationMinutes] = useState('');
 
   useEffect(() => { fetchSchedule(); }, []);
 
@@ -74,11 +81,27 @@ export default function ManageSchedule() {
     e.preventDefault();
     setAdding(true);
     try {
-      await api.post('/api/doctors/schedule', { date, startTime, endTime });
-      setToast({ message: 'Slot added successfully!', type: 'success' });
+      const payload: Record<string, unknown> = {
+        date,
+        startTime,
+        endTime,
+        consultationType,
+        maxBookings: Number(maxBookings) || 1,
+      };
+
+      if (slotDurationMinutes.trim()) {
+        payload.slotDurationMinutes = Number(slotDurationMinutes);
+      }
+
+      const { data } = await api.post('/api/doctors/schedule', payload);
+      const createdCount = Array.isArray(data?.slots) ? data.slots.length : 1;
+      setToast({ message: `${createdCount} slot${createdCount === 1 ? '' : 's'} added successfully!`, type: 'success' });
       setDate('');
       setStartTime('');
       setEndTime('');
+      setConsultationType('ONLINE');
+      setMaxBookings('1');
+      setSlotDurationMinutes('');
       fetchSchedule();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? 'Failed to add slot.';
@@ -165,6 +188,21 @@ export default function ManageSchedule() {
             <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>End Time</label>
             <input type="time" required value={endTime} onChange={(e) => setEndTime(e.target.value)} style={inputStyle} />
           </div>
+          <div style={{ flex: '1 1 160px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Consultation Type</label>
+            <select value={consultationType} onChange={(e) => setConsultationType(e.target.value as 'ONLINE' | 'PHYSICAL')} style={inputStyle}>
+              <option value="ONLINE">Online</option>
+              <option value="PHYSICAL">Physical</option>
+            </select>
+          </div>
+          <div style={{ flex: '1 1 130px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Patients Per Slot</label>
+            <input type="number" min="1" required value={maxBookings} onChange={(e) => setMaxBookings(e.target.value)} style={inputStyle} />
+          </div>
+          <div style={{ flex: '1 1 160px' }}>
+            <label style={{ display: 'block', fontWeight: 600, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 5 }}>Slot Duration (minutes)</label>
+            <input type="number" min="1" value={slotDurationMinutes} onChange={(e) => setSlotDurationMinutes(e.target.value)} placeholder="Optional e.g. 30" style={inputStyle} />
+          </div>
           <button type="submit" disabled={adding} style={{ padding: '10px 20px', borderRadius: 8, background: adding ? 'var(--border)' : 'var(--primary)', color: '#fff', border: 'none', cursor: adding ? 'not-allowed' : 'pointer', fontWeight: 700, fontSize: 13, whiteSpace: 'nowrap' }}>
             {adding ? 'Adding…' : '+ Add Slot'}
           </button>
@@ -216,11 +254,16 @@ export default function ManageSchedule() {
                           <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--text-primary)' }}>
                             {slot.startTime} – {slot.endTime}
                           </div>
+                          <div style={{ fontSize: 10, fontWeight: 700, color: slot.consultationType === 'ONLINE' ? '#1E40AF' : '#7C2D12' }}>
+                            {slot.consultationType === 'ONLINE' ? 'Online Consultation' : 'Physical Consultation'}
+                          </div>
                           <span style={{
                             fontSize: 10, fontWeight: 700,
                             color: slot.isBooked ? '#92400E' : '#065F46',
                           }}>
-                            {slot.isBooked ? '● Booked' : '○ Available'}
+                            {slot.isBooked
+                              ? `● Full (${slot.bookedCount ?? slot.maxBookings ?? 1}/${slot.maxBookings ?? 1})`
+                              : `○ Available (${slot.remainingCapacity ?? Math.max((slot.maxBookings ?? 1) - (slot.bookedCount ?? 0), 0)} left)`}
                           </span>
                         </div>
                         {!slot.isBooked && !isPast && (

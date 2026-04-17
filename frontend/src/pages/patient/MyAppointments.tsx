@@ -13,6 +13,13 @@ interface Appointment {
   scheduledAt?: string;
   scheduled_at: string;
   created_at: string;
+  doctorName?: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
+}
+
+interface DoctorInfo {
+  name?: string;
+  availableSlots?: Array<{ slotId: string; consultationType?: 'ONLINE' | 'PHYSICAL' }>;
 }
 
 function getScheduledAt(appointment: Appointment): string | undefined {
@@ -40,7 +47,33 @@ export default function MyAppointments() {
   async function fetchAppointments() {
     try {
       const { data } = await api.get('/api/appointments');
-      setAppointments(Array.isArray(data) ? data : data.appointments ?? []);
+      const rawAppointments: Appointment[] = Array.isArray(data) ? data : data.appointments ?? [];
+
+      const uniqueDoctorIds = Array.from(new Set(rawAppointments.map((appt) => appt.doctorId).filter(Boolean)));
+      const doctorInfoById = new Map<string, DoctorInfo>();
+
+      await Promise.all(
+        uniqueDoctorIds.map(async (doctorId) => {
+          try {
+            const { data: doctorData } = await api.get(`/api/doctors/internal/user/${doctorId}`);
+            doctorInfoById.set(doctorId, doctorData || {});
+          } catch {
+            doctorInfoById.set(doctorId, {});
+          }
+        }),
+      );
+
+      setAppointments(
+        rawAppointments.map((appt) => {
+          const doctorInfo = doctorInfoById.get(appt.doctorId);
+          const matchingSlot = doctorInfo?.availableSlots?.find((slot) => slot.slotId === appt.slotId);
+          return {
+            ...appt,
+            doctorName: doctorInfo?.name,
+            consultationType: matchingSlot?.consultationType || 'ONLINE',
+          };
+        }),
+      );
     } catch {
       setToast({ message: 'Failed to load appointments.', type: 'error' });
     } finally {
@@ -118,7 +151,7 @@ export default function MyAppointments() {
               const cfg = STATUS_CONFIG[appt.status] ?? { bg: '#F1F5F9', color: '#64748B', label: appt.status };
               const canCancel = appt.status === 'PENDING' || appt.status === 'CONFIRMED';
               const canPay = appt.status === 'CONFIRMED';
-              const canJoin = appt.status === 'PAID' || appt.status === 'IN_PROGRESS';
+              const canJoin = (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && appt.consultationType !== 'PHYSICAL';
               return (
                 <div key={appt.id} className="animate-fade-in" style={{
                   background: '#fff', borderRadius: 14, border: '1px solid var(--border)',
@@ -128,10 +161,15 @@ export default function MyAppointments() {
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)', marginBottom: 4 }}>
-                      Doctor ID: <span style={{ color: 'var(--primary-dark)' }}>{appt.doctorId}</span>
+                      Doctor: <span style={{ color: 'var(--primary-dark)' }}>{appt.doctorName || appt.doctorId}</span>
                     </div>
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: appt.scheduled_at ? 4 : 0 }}>
                       {appt.reason}
+                    </div>
+                    <div style={{ marginBottom: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: appt.consultationType === 'PHYSICAL' ? '#FEF3C7' : '#DBEAFE', color: appt.consultationType === 'PHYSICAL' ? '#92400E' : '#1E40AF' }}>
+                        {appt.consultationType === 'PHYSICAL' ? 'Physical Visit' : 'Online Visit'}
+                      </span>
                     </div>
                     {getScheduledAt(appt) && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -159,6 +197,11 @@ export default function MyAppointments() {
                       >
                         🎥 Join Call
                       </button>
+                    )}
+                    {appt.consultationType === 'PHYSICAL' && (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
+                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
+                        In-person visit at clinic
+                      </span>
                     )}
                     {canCancel && (
                       <button

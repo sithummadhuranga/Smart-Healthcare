@@ -18,7 +18,7 @@ interface Doctor {
   bio: string;
   consultationFee: number;
   isVerified: boolean;
-  availableSlots: { slotId: string; date: string; startTime: string; isBooked: boolean }[];
+  availableSlots: { slotId: string; date: string; startTime: string; endTime?: string; consultationType?: 'ONLINE' | 'PHYSICAL'; isBooked: boolean }[];
 }
 
 const SPECIALTY_COLORS: Record<string, string> = {
@@ -69,9 +69,9 @@ export default function BrowseDoctors() {
   }
 
   async function bookAppointment(doctor: Doctor) {
-    const slot = doctor.availableSlots?.find((s) => !s.isBooked);
+    const slot = doctor.availableSlots?.find((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE');
     if (!slot) {
-      setToast({ message: `Dr. ${doctor.name} has no available slots right now.`, type: 'error' });
+      setToast({ message: `Dr. ${doctor.name} has no online slots right now.`, type: 'error' });
       return;
     }
     setBooking(doctor._id);
@@ -79,7 +79,7 @@ export default function BrowseDoctors() {
       await api.post('/api/appointments', {
         doctorId: doctor._id,
         slotId: slot.slotId,
-        reason: 'Appointment booked via SmartCare platform',
+        reason: 'online appointment booked via SmartCare platform',
       });
       setToast({ message: `Appointment booked with Dr. ${doctor.name}!`, type: 'success' });
     } catch (err: unknown) {
@@ -240,7 +240,7 @@ export default function BrowseDoctors() {
                     ${doc.consultationFee ?? 'N/A'}
                   </div>
 
-                  {/* Buttons — Call Now + Availability like Medico */}
+                  {/* Buttons — quick online booking + availability */}
                   <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
                     <button
                       onClick={() => navigate(`/patient/doctors/${doc._id}`)}
@@ -258,21 +258,21 @@ export default function BrowseDoctors() {
                     </button>
                     <button
                       onClick={() => bookAppointment(doc)}
-                      disabled={!available || booking === doc._id}
+                      disabled={!doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') || booking === doc._id}
                       style={{
                         flex: 1, padding: '10px 0', borderRadius: 8,
-                        background: !available ? 'var(--bg-secondary)' : booking === doc._id ? 'var(--border)' : 'var(--primary)',
-                        color: !available ? 'var(--text-muted)' : '#fff',
-                        border: 'none', cursor: !available ? 'not-allowed' : 'pointer',
+                        background: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'var(--bg-secondary)' : booking === doc._id ? 'var(--border)' : 'var(--primary)',
+                        color: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'var(--text-muted)' : '#fff',
+                        border: 'none', cursor: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'not-allowed' : 'pointer',
                         fontWeight: 700, fontSize: 12,
                         transition: 'all 0.2s',
                       }}
                     >
-                      {booking === doc._id ? 'Booking...' : 'Call Now'}
+                      {booking === doc._id ? 'Booking...' : 'Book Online'}
                     </button>
                   </div>
                   <div style={{ marginTop: 10, fontSize: 12, color: available ? 'var(--primary-dark)' : 'var(--text-muted)', fontWeight: 600 }}>
-                    {available ? '● Available for booking' : '○ No open slots right now'}
+                    {available ? '● Slots available' : '○ No open slots right now'}
                   </div>
                 </div>
               );

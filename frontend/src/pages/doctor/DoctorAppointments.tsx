@@ -11,6 +11,14 @@ interface Appointment {
   status: string;
   scheduledAt?: string;
   scheduled_at: string;
+  slotId?: string;
+  patientName?: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
+}
+
+interface Slot {
+  slotId: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
 }
 
 function getScheduledAt(appointment: Appointment): string | undefined {
@@ -34,22 +42,82 @@ export default function DoctorAppointments() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    api.get('/api/appointments')
-      .then(({ data }) => setAppointments(Array.isArray(data) ? data : data.appointments ?? []))
-      .catch(() => setToast({ message: 'Failed to load appointments.', type: 'error' }))
-      .finally(() => setLoading(false));
+    void fetchAppointments();
   }, []);
 
-  async function updateStatus(id: string, action: 'accept' | 'reject' | 'complete') {
+  async function fetchAppointments() {
+    setLoading(true);
+    try {
+      const [{ data: appointmentsData }, { data: profileData }] = await Promise.all([
+        api.get('/api/appointments'),
+        api.get('/api/doctors/profile'),
+      ]);
+
+      const rawAppointments: Appointment[] = Array.isArray(appointmentsData) ? appointmentsData : appointmentsData.appointments ?? [];
+      const slots: Slot[] = Array.isArray(profileData?.availableSlots) ? profileData.availableSlots : [];
+      const slotTypeById = new Map(slots.map((slot) => [slot.slotId, slot.consultationType || 'ONLINE']));
+
+      const patientIds = Array.from(new Set(rawAppointments.map((appt) => appt.patientId).filter(Boolean)));
+      const patientNameById = new Map<string, string>();
+
+      await Promise.all(patientIds.map(async (patientId) => {
+        try {
+          const { data } = await api.get(`/api/patients/internal/${patientId}`);
+          const name = data?.patient?.name;
+          if (typeof name === 'string' && name.trim()) {
+            patientNameById.set(patientId, name.trim());
+          }
+        } catch {
+          // Keep patient ID fallback if name lookup fails.
+        }
+      }));
+
+      setAppointments(
+        rawAppointments.map((appt) => ({
+          ...appt,
+          consultationType: appt.slotId ? slotTypeById.get(appt.slotId) ?? 'ONLINE' : 'ONLINE',
+          patientName: patientNameById.get(appt.patientId),
+        })),
+      );
+    } catch {
+      setToast({ message: 'Failed to load appointments.', type: 'error' });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateStatus(id: string, action: 'accept' | 'reject' | 'complete' | 'startVisit') {
     try {
       const body = action === 'reject' ? { reason: 'Unable to accept at this time' } : {};
-      await api.patch(`/api/appointments/${id}/${action}`, body);
+      const endpoint = action === 'startVisit' ? 'start-visit' : action;
+      await api.patch(`/api/appointments/${id}/${endpoint}`, body);
       setAppointments((prev) => prev.map((a) =>
-        a.id === id ? { ...a, status: action === 'accept' ? 'CONFIRMED' : action === 'reject' ? 'REJECTED' : 'COMPLETED' } : a
+        a.id === id
+          ? {
+              ...a,
+              status:
+                action === 'accept'
+                  ? 'CONFIRMED'
+                  : action === 'reject'
+                    ? 'REJECTED'
+                    : action === 'startVisit'
+                      ? 'IN_PROGRESS'
+                      : 'COMPLETED',
+            }
+          : a,
       ));
-      setToast({ message: `Appointment ${action}ed.`, type: 'success' });
+      setToast({
+        message:
+          action === 'startVisit'
+            ? 'In-person visit started.'
+            : `Appointment ${action}ed.`,
+        type: 'success',
+      });
     } catch {
-      setToast({ message: `Failed to ${action} appointment.`, type: 'error' });
+      setToast({
+        message: action === 'startVisit' ? 'Failed to start visit.' : `Failed to ${action} appointment.`,
+        type: 'error',
+      });
     }
   }
 
@@ -92,8 +160,15 @@ export default function DoctorAppointments() {
                 <div key={appt.id} style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Patient: <span style={{ color: 'var(--primary-dark)' }}>{appt.patientId}</span></div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>
+                        Patient: <span style={{ color: 'var(--primary-dark)' }}>{appt.patientName || appt.patientId}</span>
+                      </div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>{appt.reason}</div>
+                      <div style={{ marginTop: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: appt.consultationType === 'PHYSICAL' ? '#FEF3C7' : '#DBEAFE', color: appt.consultationType === 'PHYSICAL' ? '#92400E' : '#1E40AF' }}>
+                          {appt.consultationType === 'PHYSICAL' ? 'Physical Visit' : 'Online Visit'}
+                        </span>
+                      </div>
                       {getScheduledAt(appt) && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
@@ -117,7 +192,7 @@ export default function DoctorAppointments() {
                     {appt.status === 'CONFIRMED' && (
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '7px 0' }}>Waiting for patient payment…</span>
                     )}
-                    {(appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
+                    {(appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && appt.consultationType === 'ONLINE' && (
                       <>
                         <button onClick={() => navigate(`/doctor/video/${appt.id}`)} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
@@ -126,6 +201,20 @@ export default function DoctorAppointments() {
                           </svg>
                           Start Consultation
                         </button>
+                        {appt.status === 'IN_PROGRESS' && (
+                          <button onClick={() => updateStatus(appt.id, 'complete')} style={{ padding: '7px 16px', borderRadius: 8, background: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
+                            Mark Complete
+                          </button>
+                        )}
+                      </>
+                    )}
+                    {(appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && appt.consultationType === 'PHYSICAL' && (
+                      <>
+                        {appt.status === 'PAID' && (
+                          <button onClick={() => updateStatus(appt.id, 'startVisit')} style={{ padding: '7px 16px', borderRadius: 8, background: '#0F766E', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
+                            Start Visit
+                          </button>
+                        )}
                         {appt.status === 'IN_PROGRESS' && (
                           <button onClick={() => updateStatus(appt.id, 'complete')} style={{ padding: '7px 16px', borderRadius: 8, background: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
                             Mark Complete
