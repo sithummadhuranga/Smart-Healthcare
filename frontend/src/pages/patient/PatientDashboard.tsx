@@ -26,6 +26,13 @@ const CARDS = [
     accent: false,
   },
   {
+    icon: 'calendar',
+    label: 'History',
+    desc: 'Review completed consultations and your health record timeline',
+    path: '/patient/history',
+    accent: false,
+  },
+  {
     icon: 'ai',
     label: 'AI Symptom Checker',
     desc: 'Describe symptoms and get an instant specialist recommendation',

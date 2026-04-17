@@ -15,6 +15,8 @@ import Prescriptions from './pages/patient/Prescriptions';
 import PatientProfile from './pages/patient/PatientProfile';
 import MedicalReports from './pages/patient/MedicalReports';
 import PaymentPage from './pages/patient/PaymentPage';
+import PatientHistory from './pages/patient/PatientHistory';
+import DoctorDetails from './pages/patient/DoctorDetails';
 
 // Doctor pages
 import DoctorDashboard from './pages/doctor/DoctorDashboard';
@@ -29,6 +31,7 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ManageUsers from './pages/admin/ManageUsers';
 import VerifyDoctors from './pages/admin/VerifyDoctors';
 import ManageAppointments from './pages/admin/ManageAppointments';
+import ManagePayments from './pages/admin/ManagePayments';
 
 export default function App() {
   return (
@@ -42,8 +45,10 @@ export default function App() {
         {/* Patient routes */}
         <Route path="/patient/dashboard" element={<ProtectedRoute role="patient"><PatientDashboard /></ProtectedRoute>} />
         <Route path="/patient/doctors" element={<ProtectedRoute role="patient"><BrowseDoctors /></ProtectedRoute>} />
+        <Route path="/patient/doctors/:doctorId" element={<ProtectedRoute role="patient"><DoctorDetails /></ProtectedRoute>} />
         <Route path="/patient/symptom-checker" element={<ProtectedRoute role="patient"><SymptomChecker /></ProtectedRoute>} />
         <Route path="/patient/appointments" element={<ProtectedRoute role="patient"><MyAppointments /></ProtectedRoute>} />
+        <Route path="/patient/history" element={<ProtectedRoute role="patient"><PatientHistory /></ProtectedRoute>} />
         <Route path="/patient/video/:roomId" element={<ProtectedRoute role="patient"><VideoRoom /></ProtectedRoute>} />
         <Route path="/patient/prescriptions" element={<ProtectedRoute role="patient"><Prescriptions /></ProtectedRoute>} />
         <Route path="/patient/profile" element={<ProtectedRoute role="patient"><PatientProfile /></ProtectedRoute>} />
@@ -63,6 +68,7 @@ export default function App() {
         <Route path="/admin/users" element={<ProtectedRoute role="admin"><ManageUsers /></ProtectedRoute>} />
         <Route path="/admin/doctors" element={<ProtectedRoute role="admin"><VerifyDoctors /></ProtectedRoute>} />
         <Route path="/admin/appointments" element={<ProtectedRoute role="admin"><ManageAppointments /></ProtectedRoute>} />
+        <Route path="/admin/payments" element={<ProtectedRoute role="admin"><ManagePayments /></ProtectedRoute>} />
 
         {/* Catch-all */}
         <Route path="*" element={<Navigate to="/login" replace />} />

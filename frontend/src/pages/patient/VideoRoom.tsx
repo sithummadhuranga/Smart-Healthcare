@@ -22,6 +22,7 @@ export default function VideoRoom() {
   const [videoMuted, setVideoMuted] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [error, setError] = useState('');
+  const [sessionInfo, setSessionInfo] = useState<{ status?: string } | null>(null);
 
   const cleanup = useCallback(async () => {
     const tracks = localTracksRef.current;
@@ -65,6 +66,13 @@ export default function VideoRoom() {
 
   async function joinChannel() {
     try {
+      try {
+        const { data: info } = await api.get(`/api/telemedicine/${roomId}`);
+        setSessionInfo(info);
+      } catch {
+        setSessionInfo(null);
+      }
+
       // Get Agora token from backend
       const { data } = await api.post('/api/telemedicine/token', { appointmentId: roomId });
       const { token, channelName, uid, appId } = data;
@@ -179,7 +187,7 @@ export default function VideoRoom() {
             Video Consultation {joined ? '— Connected' : joining ? '— Connecting…' : ''}
           </span>
         </div>
-        <span style={{ color: '#64748B', fontSize: 12 }}>Room: {roomId?.slice(0, 8)}…</span>
+        <span style={{ color: '#64748B', fontSize: 12 }}>Room: {roomId?.slice(0, 8)}…{sessionInfo?.status ? ` | Status: ${sessionInfo.status}` : ''}</span>
       </div>
 
       {/* Video area */}

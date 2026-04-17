@@ -154,21 +154,21 @@ function retryDelayFromHeaders(headers, attempt) {
   if (typeof retryAfter === 'string' && retryAfter.trim()) {
     const numeric = Number(retryAfter);
     if (Number.isFinite(numeric)) {
-      return Math.min(5000, Math.max(250, numeric * 1000));
+      return Math.min(15000, Math.max(500, numeric * 1000));
     }
 
     const asDate = Date.parse(retryAfter);
     if (!Number.isNaN(asDate)) {
-      return Math.min(5000, Math.max(250, asDate - Date.now()));
+      return Math.min(15000, Math.max(500, asDate - Date.now()));
     }
   }
 
-  return Math.min(5000, 1000 * (attempt + 1));
+  return Math.min(15000, 1500 * (attempt + 1));
 }
 
 async function requestWithRateLimitRetry(client, requestConfig, attempt = 0) {
   const response = await client.request(requestConfig);
-  const maxAttempts = 2;
+  const maxAttempts = 5;
 
   if (response.status !== 429 || attempt >= maxAttempts) {
     return response;

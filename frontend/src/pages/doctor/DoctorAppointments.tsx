@@ -118,13 +118,20 @@ export default function DoctorAppointments() {
                       <span style={{ fontSize: 12, color: 'var(--text-muted)', fontStyle: 'italic', padding: '7px 0' }}>Waiting for patient payment…</span>
                     )}
                     {(appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
-                      <button onClick={() => navigate(`/doctor/video/${appt.id}`)} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                          <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="#fff" />
-                          <rect x="1" y="5" width="15" height="14" rx="2" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                        Start Consultation
-                      </button>
+                      <>
+                        <button onClick={() => navigate(`/doctor/video/${appt.id}`)} style={{ padding: '7px 16px', borderRadius: 8, background: 'var(--primary)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
+                            <polygon points="23 7 16 12 23 17 23 7" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="#fff" />
+                            <rect x="1" y="5" width="15" height="14" rx="2" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                          Start Consultation
+                        </button>
+                        {appt.status === 'IN_PROGRESS' && (
+                          <button onClick={() => updateStatus(appt.id, 'complete')} style={{ padding: '7px 16px', borderRadius: 8, background: '#059669', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12 }}>
+                            Mark Complete
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

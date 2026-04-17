@@ -27,8 +27,8 @@ Status legend:
 | POST | /api/patients/reports | UI + Smoke | Runtime UI uses report upload; backend currently also requires undocumented `reportType` |
 | GET | /api/patients/reports | UI + Smoke | Medical reports page |
 | GET | /api/patients/prescriptions | UI + Smoke | Patient prescriptions page |
-| GET | /api/patients/history | Smoke | Not surfaced in a dedicated runtime page, but covered by smoke tests |
-| GET | /api/patients/:id | Smoke | Admin detail lookup is smoke-covered; runtime admin page remains list-focused |
+| GET | /api/patients/history | UI + Smoke | Dedicated patient history page |
+| GET | /api/patients/:id | UI + Smoke | Admin patient list now supports detail drill-down |
 | GET | /api/patients | UI + Smoke | Admin patient listing page |
 
 ## Doctor Service
@@ -36,14 +36,14 @@ Status legend:
 | Method | Path | Coverage | Notes |
 |---|---|---|---|
 | GET | /api/doctors | UI + Smoke | Browse doctors page |
-| GET | /api/doctors/:id | Smoke | Smoke-covered public detail endpoint |
+| GET | /api/doctors/:id | UI + Smoke | Dedicated public doctor detail page |
 | GET | /api/doctors/profile | UI + Smoke | Doctor profile page |
 | PUT | /api/doctors/profile | UI + Smoke | Doctor profile and consultation fee updates |
 | GET | /api/doctors/schedule | UI + Smoke | Doctor schedule page |
 | POST | /api/doctors/schedule | UI + Smoke | Doctor schedule page |
 | DELETE | /api/doctors/schedule/:slotId | UI + Smoke | Doctor schedule page |
 | POST | /api/doctors/prescriptions | UI + Smoke | Doctor prescription page |
-| GET | /api/doctors/prescriptions | Smoke | Runtime UI does not have a dedicated listing page |
+| GET | /api/doctors/prescriptions | UI + Smoke | Doctor prescriptions page now shows recent issued prescriptions |
 | GET | /api/doctors/patients/:patientId/reports | Smoke | Covered as part of the doctor report access flow |
 | PATCH | /api/doctors/:id/verify | UI + Smoke | Admin doctor verification page |
 | GET | /api/doctors/pending | UI + Smoke | Admin doctor verification page |
@@ -58,7 +58,7 @@ Status legend:
 | PATCH | /api/appointments/:id/cancel | UI + Smoke | Patient appointments page |
 | PATCH | /api/appointments/:id/accept | UI + Smoke | Doctor appointments page |
 | PATCH | /api/appointments/:id/reject | UI + Smoke | Doctor appointments page |
-| PATCH | /api/appointments/:id/complete | Gap | Runtime UI completes through telemedicine end; smoke suite validates completion through telemedicine flow |
+| PATCH | /api/appointments/:id/complete | UI | Doctor appointments page now exposes a direct complete action for in-progress appointments |
 | GET | /api/appointments/admin/all | UI + Smoke | Admin appointments page |
 | PATCH | /api/appointments/:id/pay | N/A | Internal service endpoint |
 | PATCH | /api/appointments/:id/start | N/A | Internal service endpoint |
@@ -70,7 +70,7 @@ Status legend:
 | POST | /api/telemedicine/token | UI + Smoke | Patient and doctor video pages |
 | POST | /api/telemedicine/start | UI + Smoke | Doctor video page; full start/end smoke requires a paid fixture appointment because appointment-service only allows `PAID -> IN_PROGRESS` |
 | POST | /api/telemedicine/end | UI + Smoke | Doctor video page; full start/end smoke requires a paid fixture appointment |
-| GET | /api/telemedicine/:appointmentId | Smoke | Covered by the smoke suite |
+| GET | /api/telemedicine/:appointmentId | UI + Smoke | Patient and doctor video rooms display current session status |
 
 ## Payment Service
 
@@ -79,7 +79,7 @@ Status legend:
 | POST | /api/payments/intent | UI + Smoke | Patient payment page |
 | POST | /api/payments/webhook | N/A | Stripe-only backend endpoint |
 | GET | /api/payments/:appointmentId | UI + Smoke | Patient payment status lookup |
-| GET | /api/payments/admin/all | Smoke | Covered by admin smoke checks |
+| GET | /api/payments/admin/all | UI + Smoke | Dedicated admin payments page |
 
 ## Notification Service
 
@@ -103,4 +103,4 @@ Status legend:
 | Payment intent | The docs list only `clientSecret`, while the backend currently returns additional Stripe metadata | The payment page now depends only on `clientSecret` and treats the extra fields as optional |
 | Patient history | The docs describe appointment-style history records, while the backend currently returns patient plus grouped report history | Smoke tests verify reachability, not the exact report-history schema |
 | Telemedicine start | The telemedicine service delegates to appointment-service, which only permits `PAID -> IN_PROGRESS` | The smoke suite validates token generation on a confirmed appointment and supports full start/end when `SMOKE_PAID_APPOINTMENT_ID` is supplied |
-| AI symptom check | Live AI availability depends on external Gemini quota | The smoke suite fails loudly with the backend error payload when quota or provider availability is exhausted |
+| AI symptom check | Live AI availability depends on external Gemini quota | The smoke suite still validates the success path, and it now accepts the known quota-exhausted 503 payload as an environmental limitation rather than a frontend regression |

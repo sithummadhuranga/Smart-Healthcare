@@ -204,7 +204,7 @@ export default function SymptomChecker() {
             </div>
 
             {/* Possible Conditions */}
-            {result.possibleConditions?.length > 0 && (
+            {(result.possibleConditions?.length ?? 0) > 0 && (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -217,7 +217,7 @@ export default function SymptomChecker() {
                   <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 2 }}>(Not a diagnosis)</span>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {result.possibleConditions.map((c, i) => (
+                  {result.possibleConditions?.map((c, i) => (
                     <span key={i} style={{ background: '#F5F3FF', color: '#5B21B6', border: '1px solid #DDD6FE', borderRadius: 20, padding: '5px 12px', fontSize: 12, fontWeight: 600 }}>{c}</span>
                   ))}
                 </div>
@@ -225,7 +225,7 @@ export default function SymptomChecker() {
             )}
 
             {/* Recommendations */}
-            {result.recommendations?.length > 0 && (
+            {(result.recommendations?.length ?? 0) > 0 && (
               <div style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -237,7 +237,7 @@ export default function SymptomChecker() {
                   <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Recommended Next Steps</span>
                 </div>
                 <ol style={{ margin: 0, paddingLeft: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {result.recommendations.map((r, i) => (
+                  {result.recommendations?.map((r, i) => (
                     <li key={i} style={{ fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.6 }}>{r}</li>
                   ))}
                 </ol>

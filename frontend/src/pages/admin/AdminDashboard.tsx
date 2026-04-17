@@ -129,6 +129,13 @@ export default function AdminDashboard() {
       icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.8"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
       bg: '#fff', color: 'var(--text-primary)', iconBg: '#EFF6FF',
     },
+    {
+      label: 'Manage Payments',
+      desc: 'Review consultation payments through the admin payment endpoint',
+      path: '/admin/payments',
+      icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M3 7h18v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" stroke="currentColor" strokeWidth="1.8"/><path d="M3 10h18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><path d="M7 15h4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
+      bg: '#fff', color: 'var(--text-primary)', iconBg: '#ECFDF5',
+    },
   ];
 
   return (
