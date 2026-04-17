@@ -546,9 +546,52 @@ export async function getPatientReports(req: Request, res: Response): Promise<vo
   try {
     const { patientId } = req.params;
     const patientServiceUrl = process.env.PATIENT_SERVICE_URL;
+    const appointmentServiceUrl = process.env.APPOINTMENT_SERVICE_URL;
 
     if (!patientServiceUrl) {
       res.status(500).json({ error: 'Server misconfiguration: PATIENT_SERVICE_URL is missing' });
+      return;
+    }
+
+    if (!appointmentServiceUrl) {
+      res.status(500).json({ error: 'Server misconfiguration: APPOINTMENT_SERVICE_URL is missing' });
+      return;
+    }
+
+    // Doctors can only review reports for patients they actually consult.
+    let doctorAppointments: Array<{ patientId?: string; status?: string }> = [];
+    try {
+      const appointmentsResponse = await axios.get(`${appointmentServiceUrl}/api/appointments`, {
+        headers: {
+          Authorization: req.headers.authorization || '',
+        },
+        timeout: 8000,
+      });
+
+      const payload = appointmentsResponse.data;
+      if (Array.isArray(payload)) {
+        doctorAppointments = payload;
+      } else if (Array.isArray(payload?.appointments)) {
+        doctorAppointments = payload.appointments;
+      }
+    } catch {
+      res.status(502).json({ error: 'Failed to verify doctor-patient appointment relationship' });
+      return;
+    }
+
+    const hasConsultationRelationship = doctorAppointments.some((appointment) => {
+      if (appointment.patientId !== patientId) {
+        return false;
+      }
+
+      const status = String(appointment.status || '').toUpperCase();
+      return status !== 'CANCELLED' && status !== 'REJECTED';
+    });
+
+    if (!hasConsultationRelationship) {
+      res.status(403).json({
+        error: 'You can only access reports for patients with active or completed consultations',
+      });
       return;
     }
 
