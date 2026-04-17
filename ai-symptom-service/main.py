@@ -9,7 +9,7 @@ import logging
 import os
 import re
 import time
-from typing import List
+from typing import List, Optional
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -49,8 +49,12 @@ app.add_middleware(
 
 # ── Gemini configuration ────────────────────────────────────────────────────────
 SYSTEM_INSTRUCTION = (
-    "You are a medical triage assistant. "
-    "You must respond ONLY with valid JSON, no explanation, no markdown, no extra text."
+    "You are an expert medical triage AI assistant working at a telemedicine healthcare platform. "
+    "Your role is to carefully analyze patient-reported symptoms and provide thorough, clinically-informed, "
+    "educational guidance that helps patients understand their situation and take the right next steps. "
+    "Always be detailed, empathetic, and informative. Never diagnose — instead explain what the symptoms "
+    "may suggest, which body systems are involved, and why a specific specialist is most relevant. "
+    "You must respond ONLY with valid JSON. No explanation, no markdown, no extra text outside the JSON object."
 )
 
 SPECIALTIES = [
@@ -78,6 +82,10 @@ class SymptomRequest(BaseModel):
 class SymptomResponse(BaseModel):
     specialty: str
     note: str
+    possibleConditions: List[str]
+    urgency: str          # 'low' | 'medium' | 'high'
+    urgencyReason: str
+    recommendations: List[str]
     disclaimer: str
 
 
@@ -98,13 +106,26 @@ async def check_symptoms(request: SymptomRequest):
         raise HTTPException(status_code=400, detail="symptoms list cannot be empty")
 
     symptoms_str = ", ".join(symptoms_cleaned)
+    specialties_list = ", ".join(SPECIALTIES)
     user_message = (
-        f"Patient reports these symptoms: {symptoms_str}.\n"
-        "Based on these symptoms, respond with exactly this JSON structure:\n"
-        '{"specialty":"<most relevant specialty from: '
-        f"{', '.join(SPECIALTIES)}"
-        '>","note":"<2 sentences of preliminary observation, do not diagnose>'
-        '","disclaimer":"<safety disclaimer advising the patient to consult a qualified doctor>"}'
+        f"A patient describes the following symptoms: {symptoms_str}.\n\n"
+        "Perform a thorough medical triage analysis and respond with ONLY the following JSON structure "
+        "— no text before or after it:\n"
+        "{\n"
+        f'  \"specialty\": \"<pick the single most relevant specialist from this list: {specialties_list}>\",\n'
+        '  \"note\": \"<Write 4 to 6 detailed, informative sentences. Describe what the combination of '
+        'symptoms could indicate about the affected body systems or organs. Explain the physiological '
+        'connection between the symptoms (why they may appear together). Describe what a specialist '
+        'from the recommended field would assess. Use plain language a patient can understand. '
+        'Do NOT provide a definitive diagnosis.>\",\n'
+        '  \"possibleConditions\": [\"<most likely condition 1>\", \"<possible condition 2>\", \"<possible condition 3>\"],\n'
+        '  \"urgency\": \"<one of exactly: low, medium, high — rate based on symptom severity and risk>\",\n'
+        '  \"urgencyReason\": \"<one clear sentence explaining why this urgency level was assigned>\",\n'
+        '  \"recommendations\": [\"<practical self-care or next-step action 1>\", \"<action 2>\", \"<action 3>\", \"<action 4>\"],\n'
+        '  \"disclaimer\": \"<2-sentence disclaimer: clearly state this is AI-generated preliminary guidance only, '
+        'not a medical diagnosis, and the patient must consult a qualified healthcare professional before '
+        'drawing any conclusions or starting any treatment>\",\n'
+        "}\n"
     )
 
     try:
@@ -126,12 +147,29 @@ async def check_symptoms(request: SymptomRequest):
         if specialty not in SPECIALTIES:
             specialty = "General Practice"
 
+        urgency = str(data.get("urgency", "medium")).lower()
+        if urgency not in ("low", "medium", "high"):
+            urgency = "medium"
+
+        possible = data.get("possibleConditions", [])
+        if not isinstance(possible, list):
+            possible = []
+
+        recommendations = data.get("recommendations", [])
+        if not isinstance(recommendations, list):
+            recommendations = []
+
         return SymptomResponse(
             specialty=specialty,
-            note=data.get("note", "Please describe your symptoms in more detail."),
+            note=data.get("note", "Please consult a qualified healthcare professional for a thorough evaluation."),
+            possibleConditions=possible[:4],
+            urgency=urgency,
+            urgencyReason=data.get("urgencyReason", "Please consult a specialist for a proper assessment."),
+            recommendations=recommendations[:5],
             disclaimer=data.get(
                 "disclaimer",
-                "This is not a medical diagnosis. Please consult a qualified healthcare professional.",
+                "This is AI-generated preliminary guidance only and does not constitute a medical diagnosis. "
+                "Please consult a qualified healthcare professional before drawing any conclusions or starting any treatment.",
             ),
         )
 
