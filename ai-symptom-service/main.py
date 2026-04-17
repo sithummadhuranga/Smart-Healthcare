@@ -8,8 +8,7 @@ import json
 import logging
 import os
 import re
-import time
-from typing import List, Optional
+from typing import List
 
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -26,8 +25,7 @@ logger = logging.getLogger(__name__)
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY is not set. "
-        "Add GEMINI_API_KEY=your_key_here to your .env file."
+        "GEMINI_API_KEY is not set. " "Add GEMINI_API_KEY=your_key_here to your .env file."
     )
 
 genai.configure(api_key=GEMINI_API_KEY)
@@ -49,20 +47,49 @@ app.add_middleware(
 
 # ── Gemini configuration ────────────────────────────────────────────────────────
 SYSTEM_INSTRUCTION = (
-    "You are an expert medical triage AI assistant working at a telemedicine healthcare platform. "
-    "Your role is to carefully analyze patient-reported symptoms and provide thorough, clinically-informed, "
-    "educational guidance that helps patients understand their situation and take the right next steps. "
-    "Always be detailed, empathetic, and informative. Never diagnose — instead explain what the symptoms "
-    "may suggest, which body systems are involved, and why a specific specialist is most relevant. "
-    "You must respond ONLY with valid JSON. No explanation, no markdown, no extra text outside the JSON object."
+    "You are a medical triage assistant for a telemedicine platform. "
+    "Provide clinically informed educational guidance in plain language. "
+    "Do not diagnose. Explain likely body systems involved, why symptoms may be related, "
+    "and which specialist is most suitable. Respond with valid JSON only."
 )
 
 SPECIALTIES = [
-    "Cardiology", "Dermatology", "General Practice", "Neurology",
-    "Orthopedics", "Gastroenterology", "Pulmonology", "ENT",
-    "Psychiatry", "Ophthalmology", "Gynecology", "Urology",
-    "Endocrinology", "Pediatrics", "Oncology",
+    "Cardiology",
+    "Dermatology",
+    "General Practice",
+    "Neurology",
+    "Orthopedics",
+    "Gastroenterology",
+    "Pulmonology",
+    "ENT",
+    "Psychiatry",
+    "Ophthalmology",
+    "Gynecology",
+    "Urology",
+    "Endocrinology",
+    "Pediatrics",
+    "Oncology",
 ]
+
+PROMPT_TEMPLATE = (
+    "Symptoms: {symptoms}\n\n"
+    "Return JSON only with this shape:\n"
+    "{{\n"
+    '  "specialty": "one item from: {specialties}",\n'
+    '  "note": "3-4 plain-language sentences. Explain likely body systems, '
+    'symptom links, and what the specialist would assess. No diagnosis.",\n'
+    '  "possibleConditions": ["2-3 reasonable, non-diagnostic possibilities"],\n'
+    '  "urgency": "low|medium|high",\n'
+    '  "urgencyReason": "one sentence",\n'
+    '  "recommendations": ["3-4 practical next steps or self-care actions"],\n'
+    '  "disclaimer": "two short sentences saying this is AI guidance only, '
+    'not a diagnosis, and a clinician must be consulted before treatment"\n'
+    "}}\n\n"
+    "Rules:\n"
+    "- Pick exactly one specialty from the allowed list.\n"
+    "- Keep the note accurate, calm, and concise.\n"
+    "- Avoid markdown and any text outside the JSON object."
+)
 
 _model = genai.GenerativeModel(
     model_name="gemini-2.5-flash",
@@ -83,7 +110,7 @@ class SymptomResponse(BaseModel):
     specialty: str
     note: str
     possibleConditions: List[str]
-    urgency: str          # 'low' | 'medium' | 'high'
+    urgency: str  # 'low' | 'medium' | 'high'
     urgencyReason: str
     recommendations: List[str]
     disclaimer: str
@@ -107,25 +134,9 @@ async def check_symptoms(request: SymptomRequest):
 
     symptoms_str = ", ".join(symptoms_cleaned)
     specialties_list = ", ".join(SPECIALTIES)
-    user_message = (
-        f"A patient describes the following symptoms: {symptoms_str}.\n\n"
-        "Perform a thorough medical triage analysis and respond with ONLY the following JSON structure "
-        "— no text before or after it:\n"
-        "{\n"
-        f'  \"specialty\": \"<pick the single most relevant specialist from this list: {specialties_list}>\",\n'
-        '  \"note\": \"<Write 4 to 6 detailed, informative sentences. Describe what the combination of '
-        'symptoms could indicate about the affected body systems or organs. Explain the physiological '
-        'connection between the symptoms (why they may appear together). Describe what a specialist '
-        'from the recommended field would assess. Use plain language a patient can understand. '
-        'Do NOT provide a definitive diagnosis.>\",\n'
-        '  \"possibleConditions\": [\"<most likely condition 1>\", \"<possible condition 2>\", \"<possible condition 3>\"],\n'
-        '  \"urgency\": \"<one of exactly: low, medium, high — rate based on symptom severity and risk>\",\n'
-        '  \"urgencyReason\": \"<one clear sentence explaining why this urgency level was assigned>\",\n'
-        '  \"recommendations\": [\"<practical self-care or next-step action 1>\", \"<action 2>\", \"<action 3>\", \"<action 4>\"],\n'
-        '  \"disclaimer\": \"<2-sentence disclaimer: clearly state this is AI-generated preliminary guidance only, '
-        'not a medical diagnosis, and the patient must consult a qualified healthcare professional before '
-        'drawing any conclusions or starting any treatment>\",\n'
-        "}\n"
+    user_message = PROMPT_TEMPLATE.format(
+        symptoms=symptoms_str,
+        specialties=specialties_list,
     )
 
     try:
@@ -161,15 +172,23 @@ async def check_symptoms(request: SymptomRequest):
 
         return SymptomResponse(
             specialty=specialty,
-            note=data.get("note", "Please consult a qualified healthcare professional for a thorough evaluation."),
+            note=data.get(
+                "note",
+                "Please consult a qualified healthcare professional for a thorough evaluation.",
+            ),
             possibleConditions=possible[:4],
             urgency=urgency,
-            urgencyReason=data.get("urgencyReason", "Please consult a specialist for a proper assessment."),
+            urgencyReason=data.get(
+                "urgencyReason",
+                "Please consult a specialist for a proper assessment.",
+            ),
             recommendations=recommendations[:5],
             disclaimer=data.get(
                 "disclaimer",
-                "This is AI-generated preliminary guidance only and does not constitute a medical diagnosis. "
-                "Please consult a qualified healthcare professional before drawing any conclusions or starting any treatment.",
+                "This is AI-generated preliminary guidance only and does not "
+                "constitute a medical diagnosis. Please consult a qualified "
+                "healthcare professional before drawing any conclusions or "
+                "starting any treatment.",
             ),
         )
 
