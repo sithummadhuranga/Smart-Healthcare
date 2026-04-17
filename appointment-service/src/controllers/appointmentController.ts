@@ -130,6 +130,31 @@ function combineScheduledAt(date: string, startTime: string): string {
   return d.toISOString();
 }
 
+async function getActiveSlotBookingCount(
+  doctorId: string,
+  slotId: string,
+  excludeAppointmentId?: string
+): Promise<number> {
+  const values: string[] = [doctorId, slotId];
+  let excludeClause = '';
+
+  if (excludeAppointmentId) {
+    values.push(excludeAppointmentId);
+    excludeClause = ` AND id <> $${values.length}`;
+  }
+
+  const result = await pool.query<{ count: number }>(
+    `SELECT COUNT(*)::int AS count
+     FROM appointments
+     WHERE doctor_id = $1
+       AND slot_id = $2
+       AND status NOT IN ('CANCELLED', 'REJECTED')${excludeClause}`,
+    values
+  );
+
+  return Number(result.rows[0]?.count || 0);
+}
+
 async function getDoctorData(doctorId: string): Promise<DoctorData> {
   const doctorServiceUrl = process.env.DOCTOR_SERVICE_URL;
   if (!doctorServiceUrl) {
