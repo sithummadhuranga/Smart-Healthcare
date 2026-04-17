@@ -11,9 +11,9 @@ const stripePromise = STRIPE_PK ? loadStripe(STRIPE_PK) : null;
 
 interface PaymentData {
   clientSecret: string;
-  amount: number;
-  currency: string;
-  paymentId: string;
+  amount?: number;
+  currency?: string;
+  paymentId?: string;
 }
 
 function CheckoutForm({ appointmentId, paymentData, onSuccess, onError }: {
@@ -58,9 +58,13 @@ function CheckoutForm({ appointmentId, paymentData, onSuccess, onError }: {
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, padding: '14px 18px', background: 'var(--primary-light)', borderRadius: 10 }}>
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)' }}>Consultation Fee</span>
-          <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary-dark)' }}>
-            ${(paymentData.amount / 100).toFixed(2)} <span style={{ fontSize: 12, fontWeight: 500 }}>{paymentData.currency.toUpperCase()}</span>
-          </span>
+          {typeof paymentData.amount === 'number' ? (
+            <span style={{ fontSize: 22, fontWeight: 800, color: 'var(--primary-dark)' }}>
+              ${(paymentData.amount / 100).toFixed(2)} <span style={{ fontSize: 12, fontWeight: 500 }}>{(paymentData.currency || 'usd').toUpperCase()}</span>
+            </span>
+          ) : (
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)' }}>Confirmed by Stripe checkout</span>
+          )}
         </div>
       </div>
 
@@ -87,7 +91,7 @@ function CheckoutForm({ appointmentId, paymentData, onSuccess, onError }: {
         fontWeight: 700, fontSize: 15,
         boxShadow: processing ? 'none' : 'var(--shadow-teal)',
       }}>
-        {processing ? 'Processing Payment…' : `Pay $${(paymentData.amount / 100).toFixed(2)}`}
+        {processing ? 'Processing Payment…' : typeof paymentData.amount === 'number' ? `Pay $${(paymentData.amount / 100).toFixed(2)}` : 'Pay Consultation Fee'}
       </button>
 
       <p style={{ textAlign: 'center', fontSize: 11, color: 'var(--text-muted)', marginTop: 12 }}>
@@ -129,8 +133,8 @@ export default function PaymentPage() {
       const { data } = await api.post('/api/payments/intent', { appointmentId });
       setPaymentData({
         clientSecret: data.clientSecret,
-        amount: data.amount,
-        currency: data.currency || 'usd',
+        amount: typeof data.amount === 'number' ? data.amount : undefined,
+        currency: typeof data.currency === 'string' ? data.currency : 'usd',
         paymentId: data.paymentId,
       });
       setInitError(null);

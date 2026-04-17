@@ -1,15 +1,15 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api, { getCurrentUser } from '../../api';
+import api from '../../api';
 import Navbar from '../../components/Navbar';
 
 interface SymptomResult {
   specialty: string;
   note: string;
-  possibleConditions: string[];
-  urgency: 'low' | 'medium' | 'high';
-  urgencyReason: string;
-  recommendations: string[];
+  possibleConditions?: string[];
+  urgency?: 'low' | 'medium' | 'high';
+  urgencyReason?: string;
+  recommendations?: string[];
   disclaimer: string;
 }
 
@@ -17,7 +17,6 @@ const EXAMPLES = ['Headache, fever, fatigue', 'Chest pain, shortness of breath',
 
 export default function SymptomChecker() {
   const navigate = useNavigate();
-  const user = getCurrentUser();
   const [symptomText, setSymptomText] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<SymptomResult | null>(null);
@@ -31,10 +30,7 @@ export default function SymptomChecker() {
     setError('');
     const symptoms = symptomText.split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
     try {
-      const { data } = await api.post<SymptomResult>('/api/ai/check', {
-        symptoms,
-        ...(user?.userId ? { patient_id: user.userId } : {}),
-      });
+      const { data } = await api.post<SymptomResult>('/api/ai/check', { symptoms });
       setResult(data);
     } catch {
       setError('Our AI service is temporarily unavailable. Please try again shortly.');
@@ -182,7 +178,7 @@ export default function SymptomChecker() {
               </div>
 
               {/* Urgency */}
-              {(() => {
+              {result.urgency && (() => {
                 const urgencyConfig = {
                   low:    { bg: '#ECFDF5', border: '#A7F3D0', color: '#065F46', label: 'Low Priority', sublabel: 'Monitor at home' },
                   medium: { bg: '#FFF7ED', border: '#FCD34D', color: '#92400E', label: 'Moderate',     sublabel: 'Schedule a visit soon' },
@@ -201,7 +197,7 @@ export default function SymptomChecker() {
                     </div>
                     <div style={{ fontWeight: 800, fontSize: 16, color: cfg.color }}>{cfg.label}</div>
                     <div style={{ fontSize: 12, color: cfg.color, opacity: 0.8, marginTop: 2 }}>{cfg.sublabel}</div>
-                    <p style={{ fontSize: 12, color: cfg.color, margin: '8px 0 0', lineHeight: 1.5, opacity: 0.9 }}>{result.urgencyReason}</p>
+                    {result.urgencyReason && <p style={{ fontSize: 12, color: cfg.color, margin: '8px 0 0', lineHeight: 1.5, opacity: 0.9 }}>{result.urgencyReason}</p>}
                   </div>
                 );
               })()}

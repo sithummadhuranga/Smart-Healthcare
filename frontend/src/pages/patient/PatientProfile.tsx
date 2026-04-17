@@ -11,7 +11,7 @@ interface PatientProfile {
   dateOfBirth?: string;
   gender?: string;
   phone?: string;
-  address?: { street?: string; city?: string; district?: string; country?: string };
+  address?: string | { street?: string; city?: string; district?: string; country?: string };
   bloodGroup?: string;
   allergies?: string[];
   chronicConditions?: string[];
@@ -69,9 +69,15 @@ export default function PatientProfilePage() {
     setDateOfBirth(p.dateOfBirth ? p.dateOfBirth.slice(0, 10) : '');
     setGender(p.gender || '');
     setPhone(p.phone || '');
-    setStreet(p.address?.street || '');
-    setCity(p.address?.city || '');
-    setDistrict(p.address?.district || '');
+    if (typeof p.address === 'string') {
+      setStreet(p.address);
+      setCity('');
+      setDistrict('');
+    } else {
+      setStreet(p.address?.street || '');
+      setCity(p.address?.city || '');
+      setDistrict(p.address?.district || '');
+    }
     setBloodGroup(p.bloodGroup || '');
     setAllergies((p.allergies || []).join(', '));
     setChronicConditions((p.chronicConditions || []).join(', '));
@@ -86,17 +92,9 @@ export default function PatientProfilePage() {
     try {
       const body: Record<string, unknown> = { name };
       if (dateOfBirth) body.dateOfBirth = dateOfBirth;
-      if (gender) body.gender = gender;
       if (phone) body.phone = phone;
-      if (bloodGroup) body.bloodGroup = bloodGroup;
-      if (street || city || district) {
-        body.address = { street, city, district, country: 'Sri Lanka' };
-      }
-      if (allergies.trim()) body.allergies = allergies.split(',').map(a => a.trim()).filter(Boolean);
-      if (chronicConditions.trim()) body.chronicConditions = chronicConditions.split(',').map(c => c.trim()).filter(Boolean);
-      if (ecName || ecPhone) {
-        body.emergencyContact = { name: ecName, phone: ecPhone, relationship: ecRelationship };
-      }
+      const address = [street, city, district].map((value) => value.trim()).filter(Boolean).join(', ');
+      if (address) body.address = address;
       const { data } = await api.put('/api/patients/profile', body);
       setProfile(data.patient ?? data);
       setEditing(false);

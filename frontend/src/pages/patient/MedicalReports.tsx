@@ -5,14 +5,17 @@ import Navbar from '../../components/Navbar';
 import Toast from '../../components/Toast';
 
 interface Report {
-  _id: string;
+  reportId?: string;
+  _id?: string;
   title: string;
   description?: string;
-  reportType: string;
-  fileUrl: string;
-  format: string;
-  bytes: number;
-  createdAt: string;
+  reportType?: string;
+  cloudinaryUrl?: string;
+  fileUrl?: string;
+  format?: string;
+  bytes?: number;
+  uploadedAt?: string;
+  createdAt?: string;
 }
 
 const REPORT_TYPES = ['lab', 'imaging', 'prescription', 'discharge', 'other'];
@@ -201,8 +204,11 @@ export default function MedicalReports() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {reports.map((r) => {
               const cfg = TYPE_CONFIG[r.reportType] ?? TYPE_CONFIG.other;
+              const reportKey = r.reportId ?? r._id ?? `${r.title}-${r.uploadedAt ?? r.createdAt ?? ''}`;
+              const reportUrl = r.cloudinaryUrl ?? r.fileUrl ?? '#';
+              const reportDate = r.uploadedAt ?? r.createdAt;
               return (
-                <div key={r._id} className="animate-fade-in" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div key={reportKey} className="animate-fade-in" style={{ background: '#fff', borderRadius: 14, border: '1px solid var(--border)', padding: '18px 20px', boxShadow: 'var(--shadow-sm)', display: 'flex', alignItems: 'center', gap: 16 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 10, background: cfg.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                     {r.format === 'pdf' ? (
                       <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
@@ -224,11 +230,11 @@ export default function MedicalReports() {
                     {r.description && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 3 }}>{r.description}</div>}
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 11, color: 'var(--text-muted)' }}>
                       <span style={{ background: cfg.bg, color: cfg.color, padding: '2px 8px', borderRadius: 8, fontWeight: 700 }}>{cfg.label}</span>
-                      <span>{formatSize(r.bytes)}</span>
-                      <span>{new Date(r.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>
+                      {typeof r.bytes === 'number' && <span>{formatSize(r.bytes)}</span>}
+                      {reportDate && <span>{new Date(reportDate).toLocaleDateString(undefined, { dateStyle: 'medium' })}</span>}
                     </div>
                   </div>
-                  <a href={r.fileUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 14px', borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 12, textDecoration: 'none', flexShrink: 0 }}>
+                  <a href={reportUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '7px 14px', borderRadius: 8, background: 'var(--primary-light)', color: 'var(--primary-dark)', fontWeight: 700, fontSize: 12, textDecoration: 'none', flexShrink: 0, pointerEvents: reportUrl === '#' ? 'none' : 'auto', opacity: reportUrl === '#' ? 0.5 : 1 }}>
                     View ↗
                   </a>
                 </div>

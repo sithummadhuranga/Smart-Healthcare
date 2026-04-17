@@ -10,8 +10,13 @@ interface Appointment {
   slotId: string;
   reason: string;
   status: string;
+  scheduledAt?: string;
   scheduled_at: string;
   created_at: string;
+}
+
+function getScheduledAt(appointment: Appointment): string | undefined {
+  return appointment.scheduledAt || appointment.scheduled_at;
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; color: string; label: string }> = {
@@ -128,10 +133,10 @@ export default function MyAppointments() {
                     <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: appt.scheduled_at ? 4 : 0 }}>
                       {appt.reason}
                     </div>
-                    {appt.scheduled_at && (
+                    {getScheduledAt(appt) && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <span>🕐</span>
-                        {new Date(appt.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                        {new Date(getScheduledAt(appt)!).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                       </div>
                     )}
                   </div>

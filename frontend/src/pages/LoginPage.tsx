@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api, { parseToken } from '../api';
+import api, { parseToken, persistToken } from '../api';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -17,15 +17,19 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       const token: string = data.accessToken;
-      localStorage.setItem('token', token);
-      const claims = parseToken(token);
-      if (!claims) throw new Error('Invalid token received');
+      persistToken(token);
+
+      const meResponse = await api.get('/api/auth/me').catch(() => null);
+      const role = meResponse?.data?.role ?? parseToken(token)?.role;
+
+      if (!role) throw new Error('Invalid token received');
+
       const redirects: Record<string, string> = {
         patient: '/patient/dashboard',
         doctor: '/doctor/dashboard',
         admin: '/admin/dashboard',
       };
-      navigate(redirects[claims.role] ?? '/login');
+      navigate(redirects[role] ?? '/login');
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { error?: string } } })?.response?.data?.error ??
