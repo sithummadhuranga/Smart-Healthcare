@@ -9,7 +9,12 @@ interface Appointment {
   patientId: string;
   reason: string;
   status: string;
+  scheduledAt?: string;
   scheduled_at: string;
+}
+
+function getScheduledAt(appointment: Appointment): string | undefined {
+  return appointment.scheduledAt || appointment.scheduled_at;
 }
 
 const STATUS_CFG: Record<string, { bg: string; color: string; label: string }> = {
@@ -89,13 +94,13 @@ export default function DoctorAppointments() {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--text-primary)' }}>Patient: <span style={{ color: 'var(--primary-dark)' }}>{appt.patientId}</span></div>
                       <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 3 }}>{appt.reason}</div>
-                      {appt.scheduled_at && (
+                      {getScheduledAt(appt) && (
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3, display: 'flex', alignItems: 'center', gap: 4 }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" style={{ flexShrink: 0 }}>
                             <circle cx="12" cy="12" r="9" stroke="#94A3B8" strokeWidth="2" />
                             <path d="M12 7v5l3 3" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                          {new Date(appt.scheduled_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
+                          {new Date(getScheduledAt(appt)!).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })}
                         </div>
                       )}
                     </div>

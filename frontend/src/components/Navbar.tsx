@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ReactElement } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { getCurrentUser } from '../api';
+import api, { clearSession, getCurrentUser } from '../api';
 
 /* Clean minimal SVG icons — replaces emoji icons */
 const ICONS: Record<string, ReactElement> = {
@@ -61,8 +61,14 @@ export default function Navbar() {
   const badge = user ? (ROLE_BADGE[user.role] ?? ROLE_BADGE.patient) : null;
   const initials = user?.name?.split(' ').map((n: string) => n[0]).slice(0, 2).join('').toUpperCase() ?? 'U';
 
-  function logout() {
-    localStorage.clear();
+  async function logout() {
+    try {
+      await api.post('/api/auth/logout');
+    } catch {
+      // Local cleanup is still sufficient for UI sign-out.
+    }
+
+    clearSession();
     navigate('/login');
   }
 

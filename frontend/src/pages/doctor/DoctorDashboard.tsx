@@ -7,8 +7,13 @@ interface Appointment {
   id: string;
   patientId: string;
   status: string;
+  scheduledAt?: string;
   scheduled_at: string;
   reason: string;
+}
+
+function getScheduledAt(appointment: Appointment): string | undefined {
+  return appointment.scheduledAt || appointment.scheduled_at;
 }
 
 export default function DoctorDashboard() {
@@ -26,8 +31,9 @@ export default function DoctorDashboard() {
 
   const confirmed = appointments.filter((a) => a.status === 'CONFIRMED' || a.status === 'PAID' || a.status === 'IN_PROGRESS');
   const today = confirmed.filter((a) => {
-    if (!a.scheduled_at) return false;
-    return new Date(a.scheduled_at).toDateString() === new Date().toDateString();
+    const scheduledAt = getScheduledAt(a);
+    if (!scheduledAt) return false;
+    return new Date(scheduledAt).toDateString() === new Date().toDateString();
   });
   const pending = appointments.filter((a) => a.status === 'PENDING');
 
@@ -188,9 +194,9 @@ export default function DoctorDashboard() {
                       <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text-primary)' }}>{a.reason || 'Consultation'}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
                         Patient ID: {a.patientId.slice(0, 8)}…
-                        {a.scheduled_at && (
+                        {getScheduledAt(a) && (
                           <span style={{ marginLeft: 10, color: 'var(--primary-dark)', fontWeight: 600 }}>
-                            {new Date(a.scheduled_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                            {new Date(getScheduledAt(a)!).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         )}
                       </div>

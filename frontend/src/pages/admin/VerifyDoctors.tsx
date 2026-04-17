@@ -8,13 +8,9 @@ interface Doctor {
   _id: string;
   name: string;
   email: string;
-  role: 'doctor';
-  isActive: boolean;
+  specialty?: string;
+  qualifications?: string[];
   isVerified: boolean;
-}
-
-interface UsersResponse {
-  users?: Doctor[];
 }
 
 export default function VerifyDoctors() {
@@ -26,11 +22,8 @@ export default function VerifyDoctors() {
   async function fetchPendingDoctors() {
     setLoading(true);
     try {
-      const { data } = await api.get<UsersResponse>('/api/auth/users', {
-        params: { role: 'doctor', limit: 100 },
-      });
-      const allDoctors = Array.isArray(data?.users) ? data.users : [];
-      setDoctors(allDoctors.filter((doc) => !doc.isVerified && doc.isActive));
+      const { data } = await api.get<Doctor[]>('/api/doctors/pending');
+      setDoctors(Array.isArray(data) ? data : []);
     } catch {
       setToast({ message: 'Failed to load pending doctors.', type: 'error' });
     } finally {
@@ -44,11 +37,10 @@ export default function VerifyDoctors() {
 
   async function verifyDoctor(id: string, verified: boolean) {
     try {
-      if (verified) {
-        await api.patch(`/api/auth/users/${id}/verify`);
-      } else {
-        await api.patch(`/api/auth/users/${id}/deactivate`);
-      }
+      await api.patch(`/api/doctors/${id}/verify`, {
+        verified,
+        reason: verified ? undefined : 'Rejected by admin review',
+      });
       setDoctors((prev) => prev.filter((d) => d._id !== id));
       setToast({ message: `Doctor ${verified ? 'approved' : 'rejected'} successfully.`, type: 'success' });
     } catch {
@@ -96,6 +88,7 @@ export default function VerifyDoctors() {
                     <div>
                       <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--text-primary)' }}>Dr. {doc.name}</div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{doc.email}</div>
+                      {doc.specialty && <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{doc.specialty}</div>}
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>

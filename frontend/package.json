@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:smoke": "jest --config jest.config.cjs --runInBand tests/smoke.test.cjs"
   },
   "dependencies": {
     "@stripe/react-stripe-js": "^6.2.0",
@@ -26,7 +27,9 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
+    "form-data": "^4.0.4",
     "eslint": "^9.39.4",
+    "jest": "^30.2.0",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",

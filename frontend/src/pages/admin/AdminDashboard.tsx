@@ -4,7 +4,7 @@ import api from '../../api';
 import Navbar from '../../components/Navbar';
 
 interface Stats {
-  totalUsers: number;
+  totalPatients: number;
   totalDoctors: number;
   pendingVerifications: number;
   totalAppointments: number;
@@ -17,7 +17,7 @@ interface ServiceStatus {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalDoctors: 0, pendingVerifications: 0, totalAppointments: 0 });
+  const [stats, setStats] = useState<Stats>({ totalPatients: 0, totalDoctors: 0, pendingVerifications: 0, totalAppointments: 0 });
   const [loading, setLoading] = useState(true);
   const [serviceStatuses, setServiceStatuses] = useState<ServiceStatus[]>([
     { name: 'Auth Service', status: false },
@@ -32,8 +32,10 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     Promise.all([
-      api.get('/api/auth/users').catch(() => ({ data: { users: [] } })),
-      api.get('/api/appointments').catch(() => ({ data: [] })),
+      api.get('/api/patients', { params: { page: 1, limit: 1 } }).catch(() => ({ data: { total: 0 } })),
+      api.get('/api/doctors').catch(() => ({ data: [] })),
+      api.get('/api/doctors/pending').catch(() => ({ data: [] })),
+      api.get('/api/appointments/admin/all', { params: { page: 1, limit: 1 } }).catch(() => ({ data: { total: 0 } })),
       api.get('/api/auth/health').then(() => true).catch(() => false),
       api.get('/api/patients/health').then(() => true).catch(() => false),
       api.get('/api/doctors/health').then(() => true).catch(() => false),
@@ -43,7 +45,9 @@ export default function AdminDashboard() {
       api.get('/api/notifications/health').then(() => true).catch(() => false),
       api.get('/api/ai/health').then(() => true).catch(() => false),
     ]).then(([
-      users,
+      patients,
+      doctors,
+      pendingDoctors,
       appointments,
       authUp,
       patientUp,
@@ -54,24 +58,14 @@ export default function AdminDashboard() {
       notificationUp,
       aiUp,
     ]) => {
-      const userList = (users.data as { users?: unknown[] }).users ?? [];
-      const doctorUsers = Array.isArray(userList)
-        ? userList.filter((u) => {
-            const user = u as { role?: string; isVerified?: boolean; isActive?: boolean };
-            return user.role === 'doctor' && user.isActive;
-          })
-        : [];
-
-      const pendingDoctors = doctorUsers.filter((u) => {
-        const user = u as { isVerified?: boolean };
-        return !user.isVerified;
-      });
+      const doctorList = Array.isArray(doctors.data) ? doctors.data : [];
+      const pendingList = Array.isArray(pendingDoctors.data) ? pendingDoctors.data : [];
 
       setStats({
-        totalUsers: Array.isArray(userList) ? userList.length : 0,
-        totalDoctors: doctorUsers.length,
-        pendingVerifications: pendingDoctors.length,
-        totalAppointments: Array.isArray(appointments.data) ? appointments.data.length : 0,
+        totalPatients: Number((patients.data as { total?: number; pagination?: { total?: number } }).total ?? (patients.data as { pagination?: { total?: number } }).pagination?.total ?? 0),
+        totalDoctors: doctorList.length,
+        pendingVerifications: pendingList.length,
+        totalAppointments: Number((appointments.data as { total?: number }).total ?? 0),
       });
       setServiceStatuses([
         { name: 'Auth Service', status: Boolean(authUp) },
@@ -88,8 +82,8 @@ export default function AdminDashboard() {
 
   const STAT_CARDS = [
     {
-      label: 'Total Users',
-      value: stats.totalUsers,
+      label: 'Total Patients',
+      value: stats.totalPatients,
       icon: <svg width="22" height="22" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="#2563EB" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="#2563EB" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="#2563EB" strokeWidth="1.8" strokeLinecap="round"/></svg>,
       bg: '#EFF6FF', border: '#BFDBFE', color: '#2563EB',
     },
@@ -115,8 +109,8 @@ export default function AdminDashboard() {
 
   const ACTIONS = [
     {
-      label: 'Manage Users',
-      desc: 'View, filter, and deactivate user accounts across all roles',
+      label: 'Manage Patients',
+      desc: 'Review patient profiles through the documented admin endpoints',
       path: '/admin/users',
       icon: <svg width="24" height="24" fill="none" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth="1.8"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/></svg>,
       bg: 'linear-gradient(135deg, #0D9488 0%, #14B8A6 100%)', color: '#fff', iconBg: 'rgba(255,255,255,0.2)',
