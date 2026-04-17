@@ -247,10 +247,36 @@ export async function getPrescriptions(req: Request, res: Response): Promise<voi
 export async function getMedicalHistory(req: Request, res: Response): Promise<void> {
   try {
     const userId = req.user!.userId;
+    const appointmentServiceUrl =
+      process.env.APPOINTMENT_SERVICE_URL || 'http://appointment-service:3004';
+
+    let appointments: unknown[] = [];
+
+    try {
+      const appointmentResponse = await axios.get(
+        `${appointmentServiceUrl}/api/appointments`,
+        {
+          headers: {
+            Authorization: req.headers.authorization || '',
+          },
+          timeout: 5000,
+        },
+      );
+
+      const payload = appointmentResponse.data;
+      if (Array.isArray(payload)) {
+        appointments = payload;
+      } else if (Array.isArray(payload?.appointments)) {
+        appointments = payload.appointments;
+      }
+    } catch (error) {
+      // Keep history endpoint available even if appointment-service is temporarily unavailable.
+      logger.warn(`getMedicalHistory appointment fetch warning: ${(error as Error).message}`);
+    }
 
     const patient = await Patient.findOne({ userId });
     if (!patient) {
-      res.status(200).json({ history: [] });
+      res.status(200).json({ history: [], appointments });
       return;
     }
 
@@ -269,7 +295,7 @@ export async function getMedicalHistory(req: Request, res: Response): Promise<vo
       {} as Record<string, typeof reports>,
     );
 
-    res.status(200).json({ patient, history });
+    res.status(200).json({ patient, history, appointments });
   } catch (err) {
     logger.error(`getMedicalHistory error: ${(err as Error).message}`);
     res.status(500).json({ error: 'Internal server error' });

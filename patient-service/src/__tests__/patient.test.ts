@@ -1,5 +1,6 @@
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
+import axios from 'axios';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'patient-test-secret';
@@ -11,6 +12,8 @@ process.env.CLOUDINARY_API_SECRET = 'dummy';
 import { app } from '../index';
 import { Patient } from '../models/Patient';
 import { MedicalReport } from '../models/MedicalReport';
+
+jest.mock('axios');
 
 jest.mock('../models/Patient', () => ({
   Patient: {
@@ -53,6 +56,8 @@ const mockedMedicalReport = MedicalReport as unknown as {
   countDocuments: jest.Mock;
 };
 
+const mockedAxios = axios as jest.Mocked<typeof axios>;
+
 function authHeader(role: 'patient' | 'doctor' | 'admin', userId = 'u1'): string {
   const token = jwt.sign(
     { userId, role, email: `${role}@example.com`, name: `${role} user` },
@@ -66,6 +71,7 @@ function authHeader(role: 'patient' | 'doctor' | 'admin', userId = 'u1'): string
 describe('patient service routes', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockedAxios.get.mockResolvedValue({ data: { appointments: [] } } as never);
   });
 
   it('auto-creates profile when missing', async () => {
@@ -134,5 +140,34 @@ describe('patient service routes', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.history).toEqual([]);
+    expect(res.body.appointments).toEqual([]);
+  });
+
+  it('supports /hostory alias and includes appointments', async () => {
+    const patientDoc = {
+      _id: { toString: () => 'p1' },
+      userId: 'patient-1',
+      name: 'Patient One',
+      email: 'patient@example.com',
+    };
+
+    mockedPatient.findOne.mockResolvedValueOnce(patientDoc as never);
+    mockedMedicalReport.find.mockReturnValue({
+      sort: () => ({
+        limit: async () => [],
+      }),
+    } as never);
+
+    mockedAxios.get.mockResolvedValueOnce({
+      data: { appointments: [{ id: 'a1', status: 'COMPLETED' }] },
+    } as never);
+
+    const res = await request(app)
+      .get('/api/patients/hostory')
+      .set('Authorization', authHeader('patient', 'patient-1'));
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.appointments)).toBe(true);
+    expect(res.body.appointments[0].id).toBe('a1');
   });
 });
