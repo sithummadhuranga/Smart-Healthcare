@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import {
   getProfile,
   updateProfile,
@@ -15,6 +15,10 @@ import { verifyToken, requireRole } from '../middleware/verifyToken';
 import { upload } from '../config/cloudinary';
 
 const router = Router();
+
+router.get('/health', (_req: Request, res: Response) => {
+  res.status(200).json({ status: 'ok', service: 'patient-service', scope: 'api/patients' });
+});
 // ── Patient self-service routes ───────────────────────────────────────────────
 
 /**

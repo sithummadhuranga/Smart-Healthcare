@@ -67,10 +67,11 @@ export default function MyAppointments() {
         rawAppointments.map((appt) => {
           const doctorInfo = doctorInfoById.get(appt.doctorId);
           const matchingSlot = doctorInfo?.availableSlots?.find((slot) => slot.slotId === appt.slotId);
+          const resolvedConsultationType = appt.consultationType ?? matchingSlot?.consultationType;
           return {
             ...appt,
             doctorName: doctorInfo?.name,
-            consultationType: matchingSlot?.consultationType,
+            consultationType: resolvedConsultationType,
           };
         }),
       );

@@ -10,6 +10,7 @@ const schemaStatements = [
       patient_id       VARCHAR     NOT NULL,
       doctor_id        VARCHAR     NOT NULL,
       slot_id          VARCHAR     NOT NULL,
+      consultation_type VARCHAR(20) NOT NULL DEFAULT 'ONLINE',
       reason           TEXT,
       status           VARCHAR(20) NOT NULL DEFAULT 'PENDING',
       rejection_reason TEXT,
@@ -17,6 +18,7 @@ const schemaStatements = [
       created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );`,
+  "ALTER TABLE appointments ADD COLUMN IF NOT EXISTS consultation_type VARCHAR(20) NOT NULL DEFAULT 'ONLINE';",
   'CREATE INDEX IF NOT EXISTS idx_app_patient ON appointments (patient_id);',
   'CREATE INDEX IF NOT EXISTS idx_app_doctor ON appointments (doctor_id);',
   'CREATE INDEX IF NOT EXISTS idx_app_status ON appointments (status);',
@@ -36,9 +38,9 @@ const schemaStatements = [
 ];
 
 const seedStatements = [
-  `INSERT INTO appointments (id, patient_id, doctor_id, slot_id, reason, status, scheduled_at)
+    `INSERT INTO appointments (id, patient_id, doctor_id, slot_id, consultation_type, reason, status, scheduled_at)
    SELECT '00000000-0000-4000-8000-000000000001', '000000000000000000000002', '000000000000000000000003', 'slot-seed-001',
-          'Seeded sample appointment for UI verification', 'PENDING', NOW() + INTERVAL '1 day'
+      'ONLINE', 'Seeded sample appointment for UI verification', 'PENDING', NOW() + INTERVAL '1 day'
    WHERE NOT EXISTS (SELECT 1 FROM appointments);`,
 ];
 

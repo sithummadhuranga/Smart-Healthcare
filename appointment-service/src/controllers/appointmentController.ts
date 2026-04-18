@@ -17,6 +17,7 @@ interface AppointmentRow {
   patient_id: string;
   doctor_id: string;
   slot_id: string;
+  consultation_type: 'ONLINE' | 'PHYSICAL' | null;
   reason: string | null;
   status: AppointmentStatus;
   rejection_reason: string | null;
@@ -30,6 +31,7 @@ interface DoctorSlot {
   date: string;
   startTime: string;
   endTime: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
   maxBookings?: number;
   isBooked: boolean;
 }
@@ -84,6 +86,7 @@ function mapRow(row: AppointmentRow) {
     patientId: row.patient_id,
     doctorId: row.doctor_id,
     slotId: row.slot_id,
+    consultationType: row.consultation_type,
     reason: row.reason,
     status: row.status,
     rejectionReason: row.rejection_reason,
@@ -168,26 +171,65 @@ async function getDoctorData(doctorId: string): Promise<DoctorData> {
   return response.data;
 }
 
-async function getActiveSlotBookingCount(doctorUserId: string, slotId: string, excludeAppointmentId?: string): Promise<number> {
-  const values: string[] = [doctorUserId, slotId];
-  let query = `SELECT COUNT(*)::int AS count FROM appointments
-       WHERE doctor_id = $1
-         AND slot_id = $2
-         AND status NOT IN ('CANCELLED', 'REJECTED')`;
-
-  if (excludeAppointmentId) {
-    values.push(excludeAppointmentId);
-    query += ` AND id <> $${values.length}`;
+async function ensurePatientProfile(authorization?: string): Promise<void> {
+  if (!authorization) {
+    return;
   }
 
-  const result = await pool.query<{ count: number }>(query, values);
-  const firstRow = result.rows[0] as unknown as { count?: number | string } | undefined;
-  if (firstRow && firstRow.count !== undefined) {
-    return Number(firstRow.count || 0);
-  }
+  const patientServiceUrl = process.env.PATIENT_SERVICE_URL || 'http://patient-service:3002';
 
-  // Backward-compatible fallback for tests/mocks that return arbitrary rows.
-  return result.rows.length;
+  try {
+    await axios.get(`${patientServiceUrl}/api/patients/profile`, {
+      headers: {
+        Authorization: authorization,
+      },
+      timeout: 8000,
+    });
+  } catch (error) {
+    console.warn('[appointment-service] Failed to ensure patient profile exists', error);
+  }
+}
+
+async function getPatientNotificationData(userId: string): Promise<PatientNotificationData | null> {
+  const patientServiceUrl = process.env.PATIENT_SERVICE_URL || 'http://patient-service:3002';
+
+  try {
+    const response = await axios.get(`${patientServiceUrl}/api/patients/internal/${encodeURIComponent(userId)}`, {
+      timeout: 8000,
+    });
+
+    const payload = response.data as { patient?: PatientNotificationData } & PatientNotificationData;
+    const patient = payload.patient ?? payload;
+
+    return {
+      name: patient.name,
+      email: patient.email,
+      phone: patient.phone,
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+async function getDoctorNotificationData(userId: string): Promise<DoctorNotificationData | null> {
+  const doctorServiceUrl = process.env.DOCTOR_SERVICE_URL || 'http://doctor-service:3003';
+
+  try {
+    const response = await axios.get<DoctorData>(
+      `${doctorServiceUrl}/api/doctors/internal/user/${encodeURIComponent(userId)}`,
+      {
+        timeout: 8000,
+      }
+    );
+
+    return {
+      name: response.data.name,
+      email: response.data.email,
+      phone: response.data.phone,
+    };
+  } catch (error) {
+    return null;
+  }
 }
 
 export async function createAppointment(req: Request, res: Response): Promise<void> {
@@ -220,6 +262,7 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
       res.status(400).json({ error: 'Invalid slotId for selected doctor' });
       return;
     }
+    const consultationType = slot.consultationType === 'PHYSICAL' ? 'PHYSICAL' : 'ONLINE';
 
     const doctorOwnerId = doctor.userId || doctorId;
     const slotCapacity = Math.max(1, Number(slot.maxBookings) || 1);
@@ -235,10 +278,10 @@ export async function createAppointment(req: Request, res: Response): Promise<vo
     let inserted;
     try {
       inserted = await pool.query<AppointmentRow>(
-        `INSERT INTO appointments (patient_id, doctor_id, slot_id, reason, status, scheduled_at)
-         VALUES ($1, $2, $3, $4, 'PENDING', $5)
+        `INSERT INTO appointments (patient_id, doctor_id, slot_id, consultation_type, reason, status, scheduled_at)
+         VALUES ($1, $2, $3, $4, $5, 'PENDING', $6)
          RETURNING *`,
-        [req.user!.userId, doctorOwnerId, slotId, reason || null, scheduledAt]
+        [req.user!.userId, doctorOwnerId, slotId, consultationType, reason || null, scheduledAt]
       );
     } catch (error) {
       if (isUniqueViolation(error)) {
@@ -326,6 +369,7 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
       res.status(400).json({ error: 'Invalid slotId for selected doctor' });
       return;
     }
+    const consultationType = slot.consultationType === 'PHYSICAL' ? 'PHYSICAL' : 'ONLINE';
 
     const doctorOwnerId = doctor.userId || doctorId;
     const slotCapacity = Math.max(1, Number(slot.maxBookings) || 1);
@@ -343,14 +387,15 @@ export async function modifyAppointment(req: Request, res: Response): Promise<vo
         `UPDATE appointments
          SET doctor_id = $2,
              slot_id = $3,
-             reason = $4,
-             scheduled_at = $5,
+             consultation_type = $4,
+             reason = $5,
+             scheduled_at = $6,
              status = 'PENDING',
              rejection_reason = NULL,
              updated_at = NOW()
          WHERE id = $1
          RETURNING *`,
-        [appointment.id, doctorOwnerId, slotId, reason ?? appointment.reason, scheduledAt]
+        [appointment.id, doctorOwnerId, slotId, consultationType, reason ?? appointment.reason, scheduledAt]
       );
     } catch (error) {
       if (isUniqueViolation(error)) {

@@ -75,7 +75,7 @@ export default function DoctorAppointments() {
       setAppointments(
         rawAppointments.map((appt) => ({
           ...appt,
-          consultationType: appt.slotId ? slotTypeById.get(appt.slotId) : undefined,
+          consultationType: appt.consultationType ?? (appt.slotId ? slotTypeById.get(appt.slotId) : undefined),
           patientName: patientNameById.get(appt.patientId),
         })),
       );

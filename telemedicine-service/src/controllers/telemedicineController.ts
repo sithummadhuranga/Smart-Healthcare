@@ -98,6 +98,11 @@ export async function generateTelemedicineToken(req: Request, res: Response): Pr
         return;
       }
 
+      if (appointment.consultationType === 'PHYSICAL') {
+        res.status(403).json({ error: 'Telemedicine is only available for online appointments' });
+        return;
+      }
+
       if (appointment.status === 'CANCELLED' || appointment.status === 'REJECTED') {
         res.status(403).json({ error: `Cannot join a ${appointment.status} appointment` });
         return;
@@ -157,6 +162,11 @@ export async function startSession(req: Request, res: Response): Promise<void> {
         return;
       }
 
+      if (appointment.consultationType === 'PHYSICAL') {
+        res.status(403).json({ error: 'Physical appointments cannot start a telemedicine session' });
+        return;
+      }
+
       await markAppointmentInProgress(appointmentId);
     } else {
       const existing = sessions.get(appointmentId);
@@ -199,6 +209,11 @@ export async function endSession(req: Request, res: Response): Promise<void> {
 
       if (appointment.doctorId !== req.user!.userId) {
         res.status(403).json({ error: 'Only the assigned doctor can end this session' });
+        return;
+      }
+
+      if (appointment.consultationType === 'PHYSICAL') {
+        res.status(403).json({ error: 'Physical appointments do not have a telemedicine session' });
         return;
       }
 
@@ -265,6 +280,11 @@ export async function getSessionInfo(req: Request, res: Response): Promise<void>
       const appointment = await getAppointmentById(appointmentId, authHeader);
       if (!hasAppointmentAccess(req.user!.userId, req.user!.role, appointment)) {
         res.status(403).json({ error: 'You are not allowed to access this appointment' });
+        return;
+      }
+
+      if (appointment.consultationType === 'PHYSICAL') {
+        res.status(403).json({ error: 'Physical appointments do not have telemedicine session details' });
         return;
       }
 

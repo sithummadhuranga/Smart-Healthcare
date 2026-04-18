@@ -14,6 +14,7 @@ export interface AppointmentRecord {
   patientId: string;
   doctorId: string;
   slotId: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
   reason: string | null;
   status: AppointmentStatus;
   rejectionReason: string | null;

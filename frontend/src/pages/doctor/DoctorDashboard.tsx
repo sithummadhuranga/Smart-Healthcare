@@ -43,7 +43,7 @@ export default function DoctorDashboard() {
         setAppointments(
           rawAppointments.map((appt) => ({
             ...appt,
-            consultationType: appt.slotId ? slotTypeById.get(appt.slotId) : undefined,
+            consultationType: appt.consultationType ?? (appt.slotId ? slotTypeById.get(appt.slotId) : undefined),
           })),
         );
       })
