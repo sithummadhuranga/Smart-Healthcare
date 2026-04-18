@@ -10,6 +10,13 @@ interface Appointment {
   scheduledAt?: string;
   scheduled_at: string;
   reason: string;
+  slotId?: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
+}
+
+interface Slot {
+  slotId: string;
+  consultationType?: 'ONLINE' | 'PHYSICAL';
 }
 
 function getScheduledAt(appointment: Appointment): string | undefined {
@@ -23,8 +30,23 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/api/appointments')
-      .then(({ data }) => setAppointments(Array.isArray(data) ? data : data.appointments ?? []))
+    Promise.all([api.get('/api/appointments'), api.get('/api/doctors/profile')])
+      .then(([appointmentsRes, profileRes]) => {
+        const rawAppointments: Appointment[] = Array.isArray(appointmentsRes.data)
+          ? appointmentsRes.data
+          : appointmentsRes.data.appointments ?? [];
+        const slots: Slot[] = Array.isArray(profileRes.data?.availableSlots)
+          ? profileRes.data.availableSlots
+          : [];
+        const slotTypeById = new Map(slots.map((slot) => [slot.slotId, slot.consultationType]));
+
+        setAppointments(
+          rawAppointments.map((appt) => ({
+            ...appt,
+            consultationType: appt.consultationType ?? (appt.slotId ? slotTypeById.get(appt.slotId) : undefined),
+          })),
+        );
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -202,12 +224,18 @@ export default function DoctorDashboard() {
                       </div>
                     </div>
                   </div>
-                  <button
-                    onClick={() => navigate(`/doctor/video/${a.id}`)}
-                    style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, flexShrink: 0, boxShadow: 'var(--shadow-teal)' }}
-                  >
-                    Start Session
-                  </button>
+                  {a.consultationType === 'ONLINE' && (a.status === 'PAID' || a.status === 'IN_PROGRESS') ? (
+                    <button
+                      onClick={() => navigate(`/doctor/video/${a.id}`)}
+                      style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: 12, flexShrink: 0, boxShadow: 'var(--shadow-teal)' }}
+                    >
+                      Start Session
+                    </button>
+                  ) : a.consultationType === 'PHYSICAL' ? (
+                    <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 700, flexShrink: 0 }}>
+                      In-person Visit
+                    </span>
+                  ) : null}
                 </div>
               ))}
             </div>

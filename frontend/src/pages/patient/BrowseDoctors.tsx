@@ -69,7 +69,7 @@ export default function BrowseDoctors() {
   }
 
   async function bookAppointment(doctor: Doctor) {
-    const slot = doctor.availableSlots?.find((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE');
+    const slot = doctor.availableSlots?.find((s) => !s.isBooked && s.consultationType === 'ONLINE');
     if (!slot) {
       setToast({ message: `Dr. ${doctor.name} has no online slots right now.`, type: 'error' });
       return;
@@ -258,12 +258,12 @@ export default function BrowseDoctors() {
                     </button>
                     <button
                       onClick={() => bookAppointment(doc)}
-                      disabled={!doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') || booking === doc._id}
+                      disabled={!doc.availableSlots?.some((s) => !s.isBooked && s.consultationType === 'ONLINE') || booking === doc._id}
                       style={{
                         flex: 1, padding: '10px 0', borderRadius: 8,
-                        background: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'var(--bg-secondary)' : booking === doc._id ? 'var(--border)' : 'var(--primary)',
-                        color: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'var(--text-muted)' : '#fff',
-                        border: 'none', cursor: !doc.availableSlots?.some((s) => !s.isBooked && (s.consultationType || 'ONLINE') === 'ONLINE') ? 'not-allowed' : 'pointer',
+                        background: !doc.availableSlots?.some((s) => !s.isBooked && s.consultationType === 'ONLINE') ? 'var(--bg-secondary)' : booking === doc._id ? 'var(--border)' : 'var(--primary)',
+                        color: !doc.availableSlots?.some((s) => !s.isBooked && s.consultationType === 'ONLINE') ? 'var(--text-muted)' : '#fff',
+                        border: 'none', cursor: !doc.availableSlots?.some((s) => !s.isBooked && s.consultationType === 'ONLINE') ? 'not-allowed' : 'pointer',
                         fontWeight: 700, fontSize: 12,
                         transition: 'all 0.2s',
                       }}

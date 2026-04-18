@@ -67,10 +67,11 @@ export default function MyAppointments() {
         rawAppointments.map((appt) => {
           const doctorInfo = doctorInfoById.get(appt.doctorId);
           const matchingSlot = doctorInfo?.availableSlots?.find((slot) => slot.slotId === appt.slotId);
+          const resolvedConsultationType = appt.consultationType ?? matchingSlot?.consultationType;
           return {
             ...appt,
             doctorName: doctorInfo?.name,
-            consultationType: matchingSlot?.consultationType || 'ONLINE',
+            consultationType: resolvedConsultationType,
           };
         }),
       );
@@ -151,7 +152,9 @@ export default function MyAppointments() {
               const cfg = STATUS_CONFIG[appt.status] ?? { bg: '#F1F5F9', color: '#64748B', label: appt.status };
               const canCancel = appt.status === 'PENDING' || appt.status === 'CONFIRMED';
               const canPay = appt.status === 'CONFIRMED';
-              const canJoin = (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && appt.consultationType !== 'PHYSICAL';
+              const isOnline = appt.consultationType === 'ONLINE';
+              const isPhysical = appt.consultationType === 'PHYSICAL';
+              const canJoin = (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && isOnline;
               return (
                 <div key={appt.id} className="animate-fade-in" style={{
                   background: '#fff', borderRadius: 14, border: '1px solid var(--border)',
@@ -167,8 +170,8 @@ export default function MyAppointments() {
                       {appt.reason}
                     </div>
                     <div style={{ marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: appt.consultationType === 'PHYSICAL' ? '#FEF3C7' : '#DBEAFE', color: appt.consultationType === 'PHYSICAL' ? '#92400E' : '#1E40AF' }}>
-                        {appt.consultationType === 'PHYSICAL' ? 'Physical Visit' : 'Online Visit'}
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 9px', borderRadius: 12, background: isPhysical ? '#FEF3C7' : isOnline ? '#DBEAFE' : '#F1F5F9', color: isPhysical ? '#92400E' : isOnline ? '#1E40AF' : '#475569' }}>
+                        {isPhysical ? 'Physical Visit' : isOnline ? 'Online Visit' : 'Visit Type Pending'}
                       </span>
                     </div>
                     {getScheduledAt(appt) && (
@@ -198,7 +201,7 @@ export default function MyAppointments() {
                         🎥 Join Call
                       </button>
                     )}
-                    {appt.consultationType === 'PHYSICAL' && (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
+                    {isPhysical && (appt.status === 'PAID' || appt.status === 'IN_PROGRESS') && (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600 }}>
                         In-person visit at clinic
                       </span>
